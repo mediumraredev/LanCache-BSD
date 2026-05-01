@@ -1,0 +1,48 @@
+#!/bin/sh
+
+# PROVIDE: lancache-dns
+# REQUIRE: LOGIN
+# KEYWORD: lancache-dns
+
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin:$PATH
+
+. /etc/rc.subr
+
+name="lancache-dns"
+rcvar="lancache-dns_enable"
+
+# Load environment varibles
+set -a
+[ -f /usr/local/etc/lancache/lancache-dns/lancache-dns.conf ] && . /usr/local/etc/lancache/lancache-dns/lancache-dns.conf
+[ -f /usr/local/etc/lancache/lancache.conf ] && . /usr/local/etc/lancache/lancache.conf
+set +a
+
+# Logic for different commands 
+start_cmd="lancache-dns_start"
+stop_cmd="lancache-dns_stop"
+restart_cmd="lancache-dns_restart"
+
+# The prestart sequence
+lancache-dns_prestart() {
+    echo "Preparing LanCache environment..."
+    bash /opt/lancache/bin/15_generate_maps.sh
+}
+
+lancache-dns_start() {
+    lancache-dns_prestart
+    echo "Starting bind..."
+    service named onestart
+}
+
+lancache-dns_stop() {
+    echo "Stopping bind..."
+    service named onestop
+}
+
+lancache-dns_restart() {
+    lancache-dns_stop
+    lancache-dns_start
+}
+
+load_rc_config $name
+run_rc_command "$1"

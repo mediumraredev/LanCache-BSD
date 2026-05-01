@@ -1,0 +1,54 @@
+#!/bin/sh
+#
+# PROVIDE: monolithic
+# REQUIRE: LOGIN
+# KEYWORD: monolithic
+
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin:$PATH
+
+. /etc/rc.subr
+
+name="monolithic"
+rcvar="monolithic_enable"
+
+# Load environment varibles
+set -a
+[ -f /usr/local/etc/lancache/monolithic/monolithic.conf ] && . /usr/local/etc/lancache/monolithic/monolithic.conf
+[ -f /usr/local/etc/lancache/lancache.conf ] && . /usr/local/etc/lancache/lancache.conf
+set +a
+
+# Logic for different commands 
+start_cmd="monolithic_start"
+stop_cmd="monolithic_stop"
+restart_cmd="monolithic_restart"
+
+# The prestart sequence
+monolithic_prestart() {
+    echo "Preparing LanCache environment..."
+    echo "DEBUG: Current PATH is: $PATH"
+    bash /opt/lancache/bin/00_deprecation.sh
+    bash /opt/lancache/bin/05_config_check.sh
+    bash /opt/lancache/bin/10_setup.sh
+    bash /opt/lancache/bin/15_generate_maps.sh
+    bash /opt/lancache/bin/20_perms_check.sh
+    #/usr/local/bin/bash /opt/lancache/bin/test.sh
+}
+
+monolithic_start() {
+    monolithic_prestart
+    echo "Starting Nginx..."
+    service nginx onestart
+}
+
+monolithic_stop() {
+    echo "Stopping Nginx..."
+    service nginx onestop
+}
+
+monolithic_restart() {
+    monolithic_stop
+    monolithic_start
+}
+
+load_rc_config $name
+run_rc_command "$1"

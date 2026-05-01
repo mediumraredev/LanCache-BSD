@@ -1,0 +1,31 @@
+diff --git a/cmd/const.go b/cmd/const.go
+index fe303ba..a5f0267 100644
+--- a/cmd/const.go
++++ b/cmd/const.go
+@@ -7,9 +7,9 @@ const (
+ 	domainsPath = "/opt/cache-domains"
+ 	cacheDomain = "cache_domains.json"
+ 
+-	cacheConf  = "/etc/bind/cache.conf"
+-	namedConf  = "/etc/bind/named.conf.options"
+-	zonePath   = "/etc/bind/cache/"
++	cacheConf  = "/usr/local/etc/bind/cache.conf"
++	namedConf  = "/usr/local/etc/bind/named.conf.options"
++	zonePath   = "/usr/local/etc/bind/cache/"
+ 	rpzZone    = zonePath + "rpz.db"
+ 	customZone = zonePath + "custom.db"
+ 
+@@ -40,11 +40,11 @@ Make sure you are using a monolithic cache or load balancer at %s
+ 
+ 	cacheConfTemplate = `	zone "cache.lancache.net" {
+ 		type master;
+-		file "/etc/bind/cache/cache.lancache.net.db";
++		file "/usr/local/etc/bind/cache/cache.lancache.net.db";
+ 	};
+ 	zone "rpz" {
+ 		type master;
+-		file "/etc/bind/cache/rpz.db";
++		file "/usr/local/etc/bind/cache/rpz.db";
+ 		allow-query { none; };
+ 	};`
+ 
