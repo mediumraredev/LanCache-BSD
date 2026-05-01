@@ -1,0 +1,221 @@
+diff --git a/Dockerfile b/Dockerfile
+deleted file mode 100644
+index 6ca7621..0000000
+--- a/Dockerfile
++++ /dev/null
+@@ -1,23 +0,0 @@
+-FROM lancachenet/ubuntu:latest
+-MAINTAINER LanCache.Net Team <team@lancache.net>
+-ARG DEBIAN_FRONTEND=noninteractive
+-COPY overlay/ /
+-RUN apt-get update && \
+-    apt-get install -y nginx-full inotify-tools --no-install-recommends && \
+-    apt-get -y clean && \
+-    rm -rf /var/lib/apt/lists/*
+-RUN \
+-    chmod 777 /opt/nginx/startnginx.sh && \
+-    rm /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default && \
+-	mkdir -p /etc/nginx/sites-enabled/ && \
+-	mkdir -p /etc/nginx/stream-enabled/ && \
+-	for SITE in /etc/nginx/sites-available/*; do [ -e "$SITE" ] || continue; ln -s $SITE /etc/nginx/sites-enabled/`basename $SITE`; done && \
+-	for SITE in /etc/nginx/stream-available/*; do [ -e "$SITE" ] || continue; ln -s $SITE /etc/nginx/stream-enabled/`basename $SITE`; done && \
+-    mkdir -p /var/www/html && \
+-    chmod 777 /var/www/html /var/lib/nginx && \
+-    chmod -R 777 /var/log/nginx && \
+-    chmod -R 755 /hooks /init && \
+-    chmod 755 /var/www && \
+-    chmod -R 666 /etc/nginx/sites-* /etc/nginx/conf.d/* /etc/nginx/stream.d/* /etc/nginx/stream-*
+-
+-EXPOSE 80
+diff --git a/goss.yaml b/goss.yaml
+deleted file mode 100644
+index c93bf3e..0000000
+--- a/goss.yaml
++++ /dev/null
+@@ -1,15 +0,0 @@
+-process:
+-  supervisord:
+-    running: true
+-  nginx:
+-    running: true
+-port:
+-  tcp:80:
+-    listening: true
+-http:
+-  http://localhost/:
+-    status: 200
+-    allow-insecure: false
+-    no-follow-redirects: false
+-    timeout: 5000
+-    body: [Welcome to the lancachenet/ubuntu-nginx docker container]
+diff --git a/goss_wait.yaml b/goss_wait.yaml
+deleted file mode 100644
+index aa919f9..0000000
+--- a/goss_wait.yaml
++++ /dev/null
+@@ -1,8 +0,0 @@
+-process:
+-  supervisord:
+-    running: true
+-  nginx:
+-    running: true
+-port:
+-  tcp:80:
+-    listening: true
+diff --git a/overlay/etc/nginx/nginx.conf b/overlay/etc/nginx/nginx.conf
+index dd2d783..71b7faf 100644
+--- a/overlay/etc/nginx/nginx.conf
++++ b/overlay/etc/nginx/nginx.conf
+@@ -1,7 +1,7 @@
+ user www-data;
+ worker_processes auto;
+-pid /run/nginx.pid;
+-include /etc/nginx/modules-enabled/*.conf;
++pid /var/run/nginx.pid;
++include /usr/local/etc/nginx/modules-enabled/*.conf;
+ 
+ events {
+ 	worker_connections 768;
+@@ -25,7 +25,7 @@ http {
+ 	# server_names_hash_bucket_size 64;
+ 	# server_name_in_redirect off;
+ 
+-	include /etc/nginx/mime.types;
++	include /usr/local/etc/nginx/mime.types;
+ 	default_type application/octet-stream;
+ 
+ 	##
+@@ -59,8 +59,8 @@ http {
+ 	# Virtual Host Configs
+ 	##
+ 
+-	include /etc/nginx/conf.d/*.conf;
+-	include /etc/nginx/sites-enabled/*;
++	include /usr/local/etc/nginx/conf.d/*.conf;
++	include /usr/local/etc/nginx/sites-enabled/*;
+ }
+ 
+ 
+@@ -86,6 +86,6 @@ http {
+ #}
+ 
+ stream {
+-	include /etc/nginx/stream.d/*.conf;
+-	include /etc/nginx/stream-enabled/*;
++	include /usr/local/etc/nginx/stream.d/*.conf;
++	include /usr/local/etc/nginx/stream-enabled/*;
+ }
+diff --git a/overlay/etc/supervisor/conf.d/nginx.conf b/overlay/etc/supervisor/conf.d/nginx.conf
+deleted file mode 100644
+index 91b4ac0..0000000
+--- a/overlay/etc/supervisor/conf.d/nginx.conf
++++ /dev/null
+@@ -1,4 +0,0 @@
+-[program:nginx]
+-command=/opt/nginx/startnginx.sh
+-stdout_events_enabled=true
+-stderr_events_enabled=true
+diff --git a/overlay/hooks/supervisord-pre.d/20_test_files_setup b/overlay/hooks/supervisord-pre.d/20_test_files_setup
+deleted file mode 100755
+index 7ba301b..0000000
+--- a/overlay/hooks/supervisord-pre.d/20_test_files_setup
++++ /dev/null
+@@ -1,18 +0,0 @@
+-#!/usr/bin/env bash
+-
+-if [ -s /etc/DOCUMENT_ROOT ]; then
+-    DOCUMENT_ROOT=`cat /etc/DOCUMENT_ROOT`
+-fi
+-
+-# If our document root is empty - then copy over a suite of test files
+-echo -n "Checking if /var/www/$DOCUMENT_ROOT is empty - "
+-DOC_CHECK=$(find /var/www/$DOCUMENT_ROOT -maxdepth 0 -empty -exec echo EMPTY \;)
+-if [ "$DOC_CHECK" == "EMPTY" ]; then
+-  echo "Yes - copying content"
+-  cp -Rvp /usr/src/test_scripts/* /var/www/$DOCUMENT_ROOT/
+-  exit 0
+-else
+-  echo "Directory not empty.. don't touch content"
+-  exit 0
+-fi
+-
+diff --git a/overlay/hooks/supervisord-pre.d/21_cleanup_log_files b/overlay/hooks/supervisord-pre.d/21_cleanup_log_files
+deleted file mode 100644
+index f078f5e..0000000
+--- a/overlay/hooks/supervisord-pre.d/21_cleanup_log_files
++++ /dev/null
+@@ -1,11 +0,0 @@
+-#!/usr/bin/env bash
+-
+-# Check to see if user has set number of logfiles to keep:
+-
+-if [ -z $LOGFILE_RETENTION ]; then
+-  LOGFILE_RETENTION=7
+-fi
+-
+-# Clean up logfiles older than $LOGFILE_RETNENTION date
+-echo "Cleaning up log files older than $LOGFILE_RETENTION days"
+-find /var/log/nginx/ -type f -mtime +$LOGFILE_RETENTION -exec rm {} \;
+diff --git a/overlay/opt/nginx/startnginx.sh b/overlay/opt/nginx/startnginx.sh
+deleted file mode 100755
+index 8fde9ac..0000000
+--- a/overlay/opt/nginx/startnginx.sh
++++ /dev/null
+@@ -1,4 +0,0 @@
+-#!/bin/bash
+-
+-/usr/sbin/nginx -g "daemon off;"
+-
+diff --git a/overlay/var/www/html/index.html b/overlay/var/www/html/index.html
+index c6cf2b5..846d889 100644
+--- a/overlay/var/www/html/index.html
++++ b/overlay/var/www/html/index.html
+@@ -1 +1 @@
+-Welcome to the lancachenet/ubuntu-nginx docker container
++Welcome, maybe FreeBSD is better.
+diff --git a/run-tests.sh b/run-tests.sh
+deleted file mode 100755
+index f451699..0000000
+--- a/run-tests.sh
++++ /dev/null
+@@ -1,40 +0,0 @@
+-#!/bin/bash
+-which goss
+-
+-if [ $? -ne 0 ]; then
+-	echo "Please install goss from https://goss.rocks/install"
+-	echo "For a quick auto install run the following"
+-	echo "curl -fsSL https://goss.rocks/install | sh"
+-	exit $?
+-fi
+-
+-docker build --tag lancachenet/ubuntu-nginx:goss-test .
+-case $1 in
+-  circleci)
+-    shift;
+-    mkdir -p ./reports/goss
+-	if [[ "$1" == "keepimage" ]]; then
+-		KEEPIMAGE=true
+-		shift
+-	fi
+-    export GOSS_OPTS="$GOSS_OPTS --format junit"
+-	dgoss run $@ lancachenet/ubuntu-nginx:goss-test > reports/goss/report.xml
+-	#store result for exit code
+-	RESULT=$?
+-	#delete the junk that goss currently outputs :(
+-    sed -i '0,/^</d' reports/goss/report.xml
+-	#remove invalid system-err outputs from junit output so circleci can read it
+-	sed -i '/<system-err>.*<\/system-err>/d' reports/goss/report.xml
+-    ;;
+-  *)
+-	if [[ "$1" == "keepimage" ]]; then
+-		KEEPIMAGE=true
+-		shift
+-	fi
+-	dgoss run $@ lancachenet/ubuntu-nginx:goss-test
+-	RESULT=$?
+-    ;;
+-esac
+-[[ "$KEEPIMAGE" == "true" ]] || docker rmi lancachenet/ubuntu-nginx:goss-test
+-
+-exit $RESULT

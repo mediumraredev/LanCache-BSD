@@ -1,0 +1,498 @@
+diff --git a/Dockerfile b/Dockerfile
+deleted file mode 100644
+index 3ed4c76..0000000
+--- a/Dockerfile
++++ /dev/null
+@@ -1,50 +0,0 @@
+-FROM lancachenet/ubuntu-nginx:latest
+-LABEL version=3
+-LABEL description="Single caching container for caching game content at LAN parties."
+-LABEL maintainer="LanCache.Net Team <team@lancache.net>"
+-
+-RUN	apt-get update							;\
+-	apt-get install -y jq git				;
+-
+-ENV GENERICCACHE_VERSION=2 \
+-    CACHE_MODE=monolithic \
+-    WEBUSER=www-data \
+-    CACHE_INDEX_SIZE=500m \
+-    CACHE_DISK_SIZE=1000g \
+-    MIN_FREE_DISK=10g \
+-    CACHE_MAX_AGE=3560d \
+-    CACHE_SLICE_SIZE=1m \
+-    UPSTREAM_DNS="8.8.8.8 8.8.4.4" \
+-    BEAT_TIME=1h \
+-    LOGFILE_RETENTION=3560 \
+-    CACHE_DOMAINS_REPO="https://github.com/uklans/cache-domains.git" \
+-    CACHE_DOMAINS_BRANCH=master \
+-    NGINX_WORKER_PROCESSES=auto \
+-    NGINX_LOG_FORMAT=cachelog
+-
+-COPY overlay/ /
+-
+-RUN rm /etc/nginx/sites-enabled/* /etc/nginx/stream-enabled/* ;\
+-    rm /etc/nginx/conf.d/gzip.conf ;\
+-    chmod 754  /var/log/tallylog ; \
+-    id -u ${WEBUSER} &> /dev/null || adduser --system --home /var/www/ --no-create-home --shell /bin/false --group --disabled-login ${WEBUSER} ;\
+-    chmod 755 /scripts/*		;\
+-	  mkdir -m 755 -p /data/cache		;\
+-	  mkdir -m 755 -p /data/info		;\
+-    mkdir -m 755 -p /data/logs		;\
+-    mkdir -m 755 -p /tmp/nginx/		;\
+-    chown -R ${WEBUSER}:${WEBUSER} /data/	;\
+-    mkdir -p /etc/nginx/sites-enabled	;\
+-    ln -s /etc/nginx/sites-available/10_cache.conf /etc/nginx/sites-enabled/10_generic.conf; \
+-    ln -s /etc/nginx/sites-available/20_upstream.conf /etc/nginx/sites-enabled/20_upstream.conf; \
+-    ln -s /etc/nginx/sites-available/30_metrics.conf /etc/nginx/sites-enabled/30_metrics.conf; \
+-    ln -s /etc/nginx/stream-available/10_sni.conf /etc/nginx/stream-enabled/10_sni.conf; \
+-    mkdir -m 755 -p /data/cachedomains		;\
+-    mkdir -m 755 -p /tmp/nginx
+-
+-RUN git clone --depth=1 --no-single-branch https://github.com/uklans/cache-domains/ /data/cachedomains
+-
+-VOLUME ["/data/logs", "/data/cache", "/data/cachedomains", "/var/www"]
+-
+-EXPOSE 80 443 8080
+-WORKDIR /scripts
+diff --git a/ISSUE_TEMPLATE.md b/ISSUE_TEMPLATE.md
+deleted file mode 100644
+index 85effbb..0000000
+--- a/ISSUE_TEMPLATE.md
++++ /dev/null
+@@ -1,20 +0,0 @@
+-### Describe the issue you are having
+-<!-- replace this with your issue description -->
+-
+-### How are you running the container(s)
+-
+-```
+-<!-- Paste your docker run commands or your docker-compose file here -->
+-```
+-
+-### DNS Configuration
+-
+-```
+-<!-- Paste your docker run command for the DNS container OR explain how you have setup DNS on your network to point to the container -->
+-```
+-
+-### Output of container(s)
+-
+-```
+-<!-- Paste any output from the containers here - This will help us identify any issues faster -->
+-```
+diff --git a/build-locally.sh b/build-locally.sh
+deleted file mode 100755
+index fe70881..0000000
+--- a/build-locally.sh
++++ /dev/null
+@@ -1,22 +0,0 @@
+-#!/bin/bash
+-#This script build the monolithic image locally, for cases like the raspberry pi, which operates on arm64 architecture, which isn't officially supported.
+-
+-PURPLEBOLD="$(tput setf 5 bold)"
+-
+-printf "${PURPLEBOLD}Building temporary modified Ubuntu image:\n"
+-docker build -t lancachenet/ubuntu:latest --progress tty https://github.com/lancachenet/ubuntu.git
+-
+-printf  "${PURPLEBOLD}Building temporary Ubuntu-Nginx image:\n"
+-docker build -t lancachenet/ubuntu-nginx:latest --progress tty https://github.com/lancachenet/ubuntu-nginx.git
+-
+-printf "${PURPLEBOLD}Building Monolithic image:\n"
+-docker build -t lancachenet/monolithic:latest --progress tty .
+-
+-printf "${PURPLEBOLD}Removing temporary Ubuntu image:\n"
+-docker rmi lancachenet/ubuntu
+-
+-printf "${PURPLEBOLD}Removing temporary Ubuntu-Nginx image:\n"
+-docker rmi lancachenet/ubuntu-nginx
+-
+-printf "${PURPLEBOLD}Completed local build. Image now available as lancachenet/monolithic:latest\n"
+-docker image ls lancachenet/monolithic:latest
+\ No newline at end of file
+diff --git a/goss.yaml b/goss.yaml
+deleted file mode 100644
+index 54e5354..0000000
+--- a/goss.yaml
++++ /dev/null
+@@ -1,28 +0,0 @@
+-file:
+-  /data/logs/access.log:
+-    exists: true
+-    contains: []
+-  /data/logs/error.log:
+-    exists: true
+-    contains: []
+-port:
+-  tcp:80:
+-    listening: true
+-command:
+-  /scripts/cache_test.sh:
+-    exit-status: 0
+-    stdout:
+-    - Succesfully Cached
+-    timeout: 20000
+-process:
+-  nginx:
+-    running: true
+-  supervisord:
+-    running: true
+-http:
+-  http://127.0.0.1/lancache-heartbeat:
+-    status: 204
+-    allow-insecure: false
+-    no-follow-redirects: false
+-    timeout: 0
+-    body: []
+diff --git a/goss_wait.yaml b/goss_wait.yaml
+deleted file mode 100644
+index aa919f9..0000000
+--- a/goss_wait.yaml
++++ /dev/null
+@@ -1,8 +0,0 @@
+-process:
+-  supervisord:
+-    running: true
+-  nginx:
+-    running: true
+-port:
+-  tcp:80:
+-    listening: true
+diff --git a/overlay/etc/nginx/nginx.conf b/overlay/etc/nginx/nginx.conf
+index a3b2da4..a1f0501 100644
+--- a/overlay/etc/nginx/nginx.conf
++++ b/overlay/etc/nginx/nginx.conf
+@@ -1,13 +1,14 @@
+-user www-data;
+-include /etc/nginx/workers.conf;
+-pid /run/nginx.pid;
++load_module /usr/local/libexec/nginx/ngx_stream_module.so;
++user www;
++include /usr/local/etc/nginx/workers.conf;
++pid /var/run/nginx.pid;
+ 
+-include /etc/nginx/modules-enabled/*.conf;
++include /usr/local/etc/nginx/modules-enabled/*.conf;
+ 
+ events {
+   worker_connections 4096;
+   multi_accept on;
+-  use epoll;
++  use kqueue;
+ }
+ 
+ http {
+@@ -18,7 +19,7 @@ http {
+   keepalive_timeout 65;
+   types_hash_max_size 2048;
+ 
+-  include /etc/nginx/mime.types;
++  include /usr/local/etc/nginx/mime.types;
+   default_type application/octet-stream;
+ 
+   access_log /var/log/nginx/access.log;
+@@ -28,14 +29,13 @@ http {
+ 
+   gzip on;
+ 
+-  include /etc/nginx/conf.d/*.conf;
++  include /usr/local/etc/nginx/conf.d/*.conf;
+ 
+-  include /etc/nginx/sites-enabled/*.conf;
++  include /usr/local/etc/nginx/sites-enabled/*.conf;
+ }
+ 
+ 
+-stream {                                
+-  include /etc/nginx/stream.d/*.conf; 
+-  include /etc/nginx/stream-enabled/*;
+-}                                       
+-
++stream {
++  include /usr/local/etc/nginx/stream.d/*.conf;
++  include /usr/local/etc/nginx/stream-enabled/*;
++}
+diff --git a/overlay/etc/nginx/sites-available/10_cache.conf b/overlay/etc/nginx/sites-available/10_cache.conf
+index 22071ae..502a611 100644
+--- a/overlay/etc/nginx/sites-available/10_cache.conf
++++ b/overlay/etc/nginx/sites-available/10_cache.conf
+@@ -2,10 +2,10 @@
+ 
+ server {
+   listen 80 reuseport;
+-  listen [::]:80 reuseport;
++  # listen [::]:80 reuseport;
+ 
+   access_log /data/logs/access.log LOG_FORMAT;
+   error_log /data/logs/error.log;
+ 
+-  include /etc/nginx/sites-available/cache.conf.d/*.conf;
++  include /usr/local/etc/nginx/sites-available/cache.conf.d/*.conf;
+ }
+diff --git a/overlay/etc/nginx/sites-available/20_upstream.conf b/overlay/etc/nginx/sites-available/20_upstream.conf
+index 305005b..501cf7d 100644
+--- a/overlay/etc/nginx/sites-available/20_upstream.conf
++++ b/overlay/etc/nginx/sites-available/20_upstream.conf
+@@ -13,5 +13,5 @@ server {
+   # access_log /data/logs/upstream-access.log LOG_FORMAT;
+   error_log /data/logs/upstream-error.log;
+ 
+-  include /etc/nginx/sites-available/upstream.conf.d/*.conf;
++  include /usr/local/etc/nginx/sites-available/upstream.conf.d/*.conf;
+ }
+diff --git a/overlay/etc/nginx/sites-available/cache.conf.d/10_root.conf b/overlay/etc/nginx/sites-available/cache.conf.d/10_root.conf
+index f065502..c7f3404 100644
+--- a/overlay/etc/nginx/sites-available/cache.conf.d/10_root.conf
++++ b/overlay/etc/nginx/sites-available/cache.conf.d/10_root.conf
+@@ -2,6 +2,6 @@
+ 
+   location / {
+ 
+-    include /etc/nginx/sites-available/cache.conf.d/root/*.conf;
++    include /usr/local/etc/nginx/sites-available/cache.conf.d/root/*.conf;
+ 
+   }
+diff --git a/overlay/etc/nginx/sites-available/cache.conf.d/90_lancache_heartbeat.conf b/overlay/etc/nginx/sites-available/cache.conf.d/90_lancache_heartbeat.conf
+index 11b519c..7755340 100644
+--- a/overlay/etc/nginx/sites-available/cache.conf.d/90_lancache_heartbeat.conf
++++ b/overlay/etc/nginx/sites-available/cache.conf.d/90_lancache_heartbeat.conf
+@@ -1,6 +1,6 @@
+   location = /lancache-heartbeat {
+     add_header X-LanCache-Processed-By $hostname;
+-    include /etc/nginx/sites-available/cache.conf.d/root/99_gnu.conf;
++    include /usr/local/etc/nginx/sites-available/cache.conf.d/root/99_gnu.conf;
+     add_header 'Access-Control-Expose-Headers' '*';
+     add_header 'Access-Control-Allow-Origin' '*';
+     return 204;
+diff --git a/overlay/etc/supervisor/conf.d/heartbeat.conf b/overlay/etc/supervisor/conf.d/heartbeat.conf
+deleted file mode 100644
+index 004cab3..0000000
+--- a/overlay/etc/supervisor/conf.d/heartbeat.conf
++++ /dev/null
+@@ -1,4 +0,0 @@
+-[program:heartbeat]
+-command=/scripts/heartbeat.sh
+-stdout_events_enabled=true
+-stderr_events_enabled=true
+diff --git a/overlay/hooks/entrypoint-pre.d/00_deprecation.sh b/overlay/hooks/entrypoint-pre.d/00_deprecation.sh
+deleted file mode 100644
+index a841f3b..0000000
+--- a/overlay/hooks/entrypoint-pre.d/00_deprecation.sh
++++ /dev/null
+@@ -1,15 +0,0 @@
+-#!/bin/bash
+-
+-if [[ ! -z "${CACHE_DOMAIN_REPO}" ]]; then
+-
+-	echo "ERROR: CACHE_DOMAIN_REPO environment variable has be deprecated in favour of CACHE_DOMAINS_REPO. Please update your config"
+-	exit 1
+-
+-fi
+-
+-if [[ ! -z "${CACHE_MEM_SIZE}" ]]; then
+-	echo " *** CACHE_MEM_SIZE has been deprecated in place of CACHE_INDEX_SIZE"
+-	echo " *** Using CACHE_MEM_SIZE as the value"
+-	echo " *** Please update your configuration at your earliest convenience"
+-	CACHE_INDEX_SIZE=$CACHE_MEM_SIZE
+-fi
+diff --git a/overlay/hooks/entrypoint-pre.d/05_config_check.sh b/overlay/hooks/entrypoint-pre.d/05_config_check.sh
+deleted file mode 100644
+index 26ed761..0000000
+--- a/overlay/hooks/entrypoint-pre.d/05_config_check.sh
++++ /dev/null
+@@ -1,46 +0,0 @@
+-#!/bin/bash
+-
+-echo "Checking cache configuration"
+-
+-
+-print_confighash_warning () {
+-	echo ""
+-	echo "ABORTING STARTUP TO AVOID POTENTIALLY INVALIDATING THE CACHE"
+-	echo ""
+-	echo "If you are happy that this cache is valid with the current config changes"
+-	echo "please delete \`/<cache_mount>/CONFIGHASH\`"
+-	echo ""
+-	echo "See: https://lancache.net/docs/advanced/config-hash/ for more details"
+-
+-}
+-
+-DETECTED_CACHE_KEY=`grep proxy_cache_key /etc/nginx/sites-available/cache.conf.d/root/30_cache_key.conf | awk '{print $2}'`
+-NEWHASH="GENERICCACHE_VERSION=${GENERICCACHE_VERSION};CACHE_MODE=${CACHE_MODE};CACHE_SLICE_SIZE=${CACHE_SLICE_SIZE};CACHE_KEY=${DETECTED_CACHE_KEY}"
+-
+-if [ -d /data/cache/cache ]; then
+-	echo " Detected existing cache data, checking config hash for consistency"
+-	if [ -f /data/cache/CONFIGHASH ]; then
+-		OLDHASH=`cat /data/cache/CONFIGHASH`
+-		if [ ${OLDHASH} != ${NEWHASH} ]; then
+-			echo "ERROR: Detected CONFIGHASH does not match current CONFIGHASH"
+-			echo " Detected: ${OLDHASH}"
+-			echo " Current:  ${NEWHASH}"
+-			print_confighash_warning ${NEWHASH}
+-			exit -1;
+-		else
+-			echo " CONFIGHASH matches current configuration"
+-		fi
+-	else
+-		echo " Could not find CONFIGHASH for existing cachedata"
+-		echo "  This is either an upgrade from an older instance of Lancache"
+-		echo "  or CONFIGHASH has been deleted intentionally"
+-		echo ""
+-		echo " Creating CONFIGHASH from current live configuration"
+-		echo "   Current:  ${NEWHASH}"
+-		echo ""
+-		echo "  See: https://lancache.net/docs/advanced/config-hash/ for more details"
+-	fi
+-fi
+-
+-mkdir -p /data/cache/cache
+-echo ${NEWHASH} > /data/cache/CONFIGHASH
+diff --git a/overlay/hooks/entrypoint-pre.d/10_setup.sh b/overlay/hooks/entrypoint-pre.d/10_setup.sh
+deleted file mode 100644
+index 039f645..0000000
+--- a/overlay/hooks/entrypoint-pre.d/10_setup.sh
++++ /dev/null
+@@ -1,24 +0,0 @@
+-#!/bin/bash
+-set -e
+-
+-# Handle CACHE_MEM_SIZE deprecation
+-if [[ ! -z "${CACHE_MEM_SIZE}" ]]; then
+-    CACHE_INDEX_SIZE=${CACHE_MEM_SIZE}
+-fi
+-
+-# Preprocess UPSTREAM_DNS to allow for multiple resolvers using the same syntax as lancache-dns
+-UPSTREAM_DNS="$(echo -n "${UPSTREAM_DNS}" | sed 's/[;]/ /g')"
+-
+-echo "worker_processes ${NGINX_WORKER_PROCESSES};" > /etc/nginx/workers.conf
+-sed -i "s/^user .*/user ${WEBUSER};/" /etc/nginx/nginx.conf
+-sed -i "s/CACHE_INDEX_SIZE/${CACHE_INDEX_SIZE}/"  /etc/nginx/conf.d/20_proxy_cache_path.conf
+-sed -i "s/CACHE_DISK_SIZE/${CACHE_DISK_SIZE}/" /etc/nginx/conf.d/20_proxy_cache_path.conf
+-sed -i "s/MIN_FREE_DISK/${MIN_FREE_DISK}/" /etc/nginx/conf.d/20_proxy_cache_path.conf
+-sed -i "s/CACHE_MAX_AGE/${CACHE_MAX_AGE}/" /etc/nginx/conf.d/20_proxy_cache_path.conf
+-sed -i "s/CACHE_MAX_AGE/${CACHE_MAX_AGE}/"    /etc/nginx/sites-available/cache.conf.d/root/20_cache.conf
+-sed -i "s/slice 1m;/slice ${CACHE_SLICE_SIZE};/" /etc/nginx/sites-available/cache.conf.d/root/20_cache.conf
+-sed -i "s/UPSTREAM_DNS/${UPSTREAM_DNS}/"    /etc/nginx/sites-available/cache.conf.d/10_root.conf
+-sed -i "s/UPSTREAM_DNS/${UPSTREAM_DNS}/"    /etc/nginx/sites-available/upstream.conf.d/10_resolver.conf
+-sed -i "s/UPSTREAM_DNS/${UPSTREAM_DNS}/"    /etc/nginx/stream-available/10_sni.conf
+-sed -i "s/LOG_FORMAT/${NGINX_LOG_FORMAT}/"  /etc/nginx/sites-available/10_cache.conf
+-sed -i "s/LOG_FORMAT/${NGINX_LOG_FORMAT}/"  /etc/nginx/sites-available/20_upstream.conf
+diff --git a/overlay/hooks/entrypoint-pre.d/15_generate_maps.sh b/overlay/hooks/entrypoint-pre.d/15_generate_maps.sh
+deleted file mode 100644
+index f35e475..0000000
+--- a/overlay/hooks/entrypoint-pre.d/15_generate_maps.sh
++++ /dev/null
+@@ -1,56 +0,0 @@
+-#!/bin/bash
+-
+-IFS=' '
+-mkdir -p /data/cachedomains
+-echo "Bootstrapping Monolithic from ${CACHE_DOMAINS_REPO}"
+-
+-export GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+-cd /data/cachedomains
+-if [[ ! -d .git ]]; then
+-	git clone ${CACHE_DOMAINS_REPO} .
+-fi
+-
+-if [[ "${NOFETCH:-false}" != "true" ]]; then
+-	# Disable error checking whilst we attempt to get latest
+-	set +e
+-	git remote set-url origin ${CACHE_DOMAINS_REPO}
+-	git fetch origin || echo "Failed to update from remote, using local copy of cache_domains"
+-	git reset --hard origin/${CACHE_DOMAINS_BRANCH}
+-	# Reenable error checking
+-	set -e
+-fi
+-
+-TEMP_PATH=$(mktemp -d)
+-OUTPUTFILE=${TEMP_PATH}/outfile.conf
+-echo "map \"\$http_user_agent£££\$http_host\" \$cacheidentifier {" >> $OUTPUTFILE
+-echo "    default \$http_host;" >> $OUTPUTFILE
+-echo "    ~Valve\\/Steam\\ HTTP\\ Client\\ 1\.0£££.* steam;" >> $OUTPUTFILE
+-#Next line probably no longer needed as we are now regexing to victory
+-#echo "    hostnames;" >> $OUTPUTFILE
+-jq -r '.cache_domains | to_entries[] | .key' cache_domains.json | while read CACHE_ENTRY; do 
+-	#for each cache entry, find the cache indentifier
+-	CACHE_IDENTIFIER=$(jq -r ".cache_domains[$CACHE_ENTRY].name" cache_domains.json)
+-	jq -r ".cache_domains[$CACHE_ENTRY].domain_files | to_entries[] | .key" cache_domains.json | while read CACHEHOSTS_FILEID; do
+-		#Get the key for each domain files
+-		jq -r ".cache_domains[$CACHE_ENTRY].domain_files[$CACHEHOSTS_FILEID]" cache_domains.json | while read CACHEHOSTS_FILENAME; do
+-			#Get the actual file name
+-			echo Reading cache ${CACHE_IDENTIFIER} from ${CACHEHOSTS_FILENAME}
+-			cat ${CACHEHOSTS_FILENAME} | while read CACHE_HOST; do
+-				#for each file in the hosts file
+-				#remove all whitespace (mangles comments but ensures valid config files)
+-				echo "host: $CACHE_HOST"
+-				CACHE_HOST=${CACHE_HOST// /}
+-				echo "new host: $CACHE_HOST"
+-				if [ ! "x${CACHE_HOST}" == "x" ]; then
+-					#Use sed to replace . with \. and * with .*
+-					REGEX_CACHE_HOST=$(sed -e "s#\.#\\\.#g" -e "s#\*#\.\*#g" <<< ${CACHE_HOST})
+-					echo "    ~.*£££.*?${REGEX_CACHE_HOST} ${CACHE_IDENTIFIER};" >> $OUTPUTFILE
+-				fi
+-			done
+-		done
+-	done
+-done
+-echo "}" >> $OUTPUTFILE
+-cat $OUTPUTFILE
+-cp $OUTPUTFILE /etc/nginx/conf.d/30_maps.conf
+-rm -rf $TEMP_PATH
+diff --git a/overlay/hooks/entrypoint-pre.d/20_perms_check.sh b/overlay/hooks/entrypoint-pre.d/20_perms_check.sh
+deleted file mode 100644
+index b686cde..0000000
+--- a/overlay/hooks/entrypoint-pre.d/20_perms_check.sh
++++ /dev/null
+@@ -1,14 +0,0 @@
+-#!/bin/bash
+-if [ -d "/data/cache/cache" ]; then
+-	echo "Running fast permissions check"
+-	ls -l /data/cache/cache | tail --lines=+2 | grep -v ${WEBUSER} > /dev/null
+-
+-	if [[ $? -eq 0 || "$FORCE_PERMS_CHECK" == "true" ]]; then
+-		echo "Doing full checking of permissions (This WILL take a long time on large caches)..."
+-		find /data \! -user ${WEBUSER} -exec chown ${WEBUSER}:${WEBUSER} '{}' +
+-		echo "Permissions ok"
+-	else
+-		echo "Fast permissions check successful, if you have any permissions error try running with -e FORCE_PERMS_CHECK = true"
+-	fi
+-
+-fi
+diff --git a/overlay/hooks/supervisord-pre.d/99_config_check.sh b/overlay/hooks/supervisord-pre.d/99_config_check.sh
+deleted file mode 100644
+index cbf3956..0000000
+--- a/overlay/hooks/supervisord-pre.d/99_config_check.sh
++++ /dev/null
+@@ -1,17 +0,0 @@
+-#!/bin/sh
+-set -e
+-echo "Currently configured config:"
+-/scripts/getconfig.sh /etc/nginx/nginx.conf
+-
+-echo "Checking nginx config"
+-/usr/sbin/nginx -t
+-
+- [ $? -ne 0 ] || echo "Config check successful"
+-
+-echo "Ready for supervisord startup"
+-if [ -n "$CACHE_ROOT" ]
+-then
+-    echo "Monitor ${CACHE_ROOT}/logs/access.log and ${CACHE_ROOT}/logs/error.log on the host for cache activity"
+-else
+-    echo "Monitor access.log and error.log on the host for cache activity"
+-fi
+diff --git a/run-tests.sh b/run-tests.sh
+deleted file mode 100755
+index 3a1ff52..0000000
+--- a/run-tests.sh
++++ /dev/null
+@@ -1,9 +0,0 @@
+-#!/bin/bash
+-
+-if [[ "$@" == *" -- "* ]]; then
+-	SD_LOGLEVEL="-e SUPERVISORD_LOGLEVEL=INFO"
+-else
+-	SD_LOGLEVEL="-- -e SUPERVISORD_LOGLEVEL=INFO"
+-fi
+-
+-curl -fsSL https://raw.githubusercontent.com/lancachenet/test-suite/master/dgoss-tests.sh | bash -s -- --imagename="lancachenet/monolithic:goss-test" $@ $SD_LOGLEVEL -e GOSS_LOGLEVEL=DEBUG

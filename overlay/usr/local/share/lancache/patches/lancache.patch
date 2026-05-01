@@ -1,0 +1,239 @@
+diff --git a/Dockerfile b/Dockerfile
+deleted file mode 100644
+index 514cf64..0000000
+--- a/Dockerfile
++++ /dev/null
+@@ -1,35 +0,0 @@
+-FROM golang:1.23.1-alpine AS builder-dnstool
+-
+-WORKDIR /go/src/
+-
+-RUN \
+-echo ">> Downloading required apk's..." && \
+-apk --no-cache add git
+-
+-RUN \
+-echo ">> Clone dnstool repo..." && \
+-git clone https://github.com/lancachenet/dnstool.git .
+-
+-RUN \
+-echo ">> Starting go build..." && \
+-CGO_ENABLED=0 go build -trimpath -ldflags "-s -w"
+-
+-FROM lancachenet/ubuntu:latest
+-MAINTAINER LanCache.Net Team <team@lancache.net>
+-
+-ENV STEAMCACHE_DNS_VERSION=1 ENABLE_DNSSEC_VALIDATION=false LANCACHE_DNSDOMAIN=cache.lancache.net CACHE_DOMAINS_REPO=https://github.com/uklans/cache-domains.git CACHE_DOMAINS_BRANCH=master UPSTREAM_DNS=8.8.8.8
+-RUN apt-get update && apt-get install -y bind9 curl dnsutils git
+-
+-COPY overlay/ /
+-COPY --from=builder-dnstool /go/src/dnstool /usr/local/bin/dnstool
+-
+-RUN	mkdir -p /var/cache/bind /var/log/named		\
+-	&& chown bind:bind /var/cache/bind /var/log/named
+-
+-RUN git clone --depth=1 --no-single-branch https://github.com/uklans/cache-domains/ /opt/cache-domains
+-
+-EXPOSE 53/udp
+-EXPOSE 53/tcp
+-
+-WORKDIR /scripts
+-
+diff --git a/ISSUE_TEMPLATE.md b/ISSUE_TEMPLATE.md
+deleted file mode 100644
+index 85effbb..0000000
+--- a/ISSUE_TEMPLATE.md
++++ /dev/null
+@@ -1,20 +0,0 @@
+-### Describe the issue you are having
+-<!-- replace this with your issue description -->
+-
+-### How are you running the container(s)
+-
+-```
+-<!-- Paste your docker run commands or your docker-compose file here -->
+-```
+-
+-### DNS Configuration
+-
+-```
+-<!-- Paste your docker run command for the DNS container OR explain how you have setup DNS on your network to point to the container -->
+-```
+-
+-### Output of container(s)
+-
+-```
+-<!-- Paste any output from the containers here - This will help us identify any issues faster -->
+-```
+diff --git a/goss.yaml b/goss.yaml
+deleted file mode 100644
+index 061d68a..0000000
+--- a/goss.yaml
++++ /dev/null
+@@ -1,37 +0,0 @@
+-file:
+-  /var/log/named/default.log:
+-    exists: true
+-    contains: []
+-  /var/log/named/general.log:
+-    exists: true
+-    contains: []
+-  /var/log/named/queries.log:
+-    exists: true
+-    contains: []
+-port:
+-  tcp:53:
+-    listening: true
+-dns:
+-  blizzard.cache.lancache.net:
+-    resolvable: true
+-    addrs: 
+-    - 10.0.0.1
+-    timeout: 500
+-    server: 127.0.0.1
+-  epicgames.cache.lancache.net:
+-    resolvable: true
+-    addrs: 
+-    - 10.0.0.1
+-    timeout: 500
+-    server: 127.0.0.1
+-  steam.cache.lancache.net:
+-    resolvable: true
+-    addrs: 
+-    - 10.0.0.2
+-    timeout: 500
+-    server: 127.0.0.1
+-process:
+-  named:
+-    running: true
+-  supervisord:
+-    running: true
+diff --git a/goss_wait.yaml b/goss_wait.yaml
+deleted file mode 100644
+index 4cf7293..0000000
+--- a/goss_wait.yaml
++++ /dev/null
+@@ -1,8 +0,0 @@
+-process:
+-  supervisord:
+-    running: true
+-  named:
+-    running: true
+-port:
+-  tcp:53:
+-    listening: true
+diff --git a/overlay/etc/bind/cache.conf b/overlay/etc/bind/cache.conf
+new file mode 100644
+index 0000000..e69de29
+diff --git a/overlay/etc/bind/named.conf b/overlay/etc/bind/named.conf
+index c74e82d..2c8f2fb 100644
+--- a/overlay/etc/bind/named.conf
++++ b/overlay/etc/bind/named.conf
+@@ -1,2 +1,2 @@
+-include "/etc/bind/named.conf.options";
+-include "/etc/bind/cache.conf";
++include "/usr/local/etc/bind/named.conf.options";
++include "/usr/local/etc/bind/cache.conf";
+diff --git a/overlay/etc/supervisor/conf.d/bind.conf b/overlay/etc/supervisor/conf.d/bind.conf
+deleted file mode 100644
+index ffa1c24..0000000
+--- a/overlay/etc/supervisor/conf.d/bind.conf
++++ /dev/null
+@@ -1,4 +0,0 @@
+-[program:bind]
+-command=/usr/sbin/named -c /etc/bind/named.conf -u bind -f
+-stdout_events_enabled=true
+-stderr_events_enabled=true
+diff --git a/overlay/hooks/entrypoint-pre.d/10_generate_config.sh b/overlay/hooks/entrypoint-pre.d/10_generate_config.sh
+deleted file mode 100644
+index 9fc8e01..0000000
+--- a/overlay/hooks/entrypoint-pre.d/10_generate_config.sh
++++ /dev/null
+@@ -1,4 +0,0 @@
+-#/bin/bash
+-
+-/usr/local/bin/dnstool generate lancache-dns
+-
+diff --git a/overlay/hooks/supervisord-pre.d/10_config_check.sh b/overlay/hooks/supervisord-pre.d/10_config_check.sh
+deleted file mode 100755
+index 268e13e..0000000
+--- a/overlay/hooks/supervisord-pre.d/10_config_check.sh
++++ /dev/null
+@@ -1,11 +0,0 @@
+-#/bin/bash
+-
+-set -e
+-
+-echo "checking Bind9 config"
+-
+-if ! named-checkconf /etc/bind/named.conf ; then
+-    echo "Problem with Bind9 configuration - Bailing" >&2
+-    exit 1
+-fi
+-
+diff --git a/run-tests.sh b/run-tests.sh
+deleted file mode 100755
+index a88ee4e..0000000
+--- a/run-tests.sh
++++ /dev/null
+@@ -1,60 +0,0 @@
+-#!/bin/bash
+-which goss
+-
+-if [ $? -ne 0 ]; then
+-	echo "Please install goss from https://goss.rocks/install"
+-	echo "For a quick auto install run the following"
+-	echo "curl -fsSL https://goss.rocks/install | sh"
+-	exit $?
+-fi
+-
+-GOSS_WAIT_OPS="-r 60s -s 1s"
+-
+-docker build --tag lancachenet/lancache-dns:goss-test .
+-case $1 in
+-  circleci)
+-    shift;
+-    mkdir -p ./reports/goss
+-	if [[ "$1" == "keepimage" ]]; then
+-		KEEPIMAGE=true
+-		shift
+-	fi
+-    export GOSS_OPTS="$GOSS_OPTS --format junit"
+-	dgoss run -e USE_GENERIC_CACHE=true -e STEAMCACHE_IP=10.0.0.2 -e LANCACHE_IP=10.0.0.1 -e UPSTREAM_DNS="8.8.8.8; 1.1.1.1" $@ lancachenet/lancache-dns:goss-test > reports/goss/report.xml
+-	#store result for exit code
+-	RESULT=$?
+-	#delete the junk that goss currently outputs :(
+-    sed -i '0,/^</d' reports/goss/report.xml
+-	#remove invalid system-err outputs from junit output so circleci can read it
+-	sed -i '/<system-err>.*<\/system-err>/d' reports/goss/report.xml
+-    ;;
+-  docker)
+-	shift;
+-	if [[ "$1" == "keepimage" ]]; then
+-		KEEPIMAGE=true
+-		shift
+-	fi
+-	dgoss edit -e USE_GENERIC_CACHE=true -e STEAMCACHE_IP=10.0.0.2 -e LANCACHE_IP=10.0.0.1 -e UPSTREAM_DNS="8.8.8.8; 1.1.1.1" $@ lancachenet/lancache-dns:goss-test
+-	RESULT=$?
+-    ;;
+-  edit)
+-	shift;
+-	if [[ "$1" == "keepimage" ]]; then
+-		KEEPIMAGE=true
+-		shift
+-	fi
+-	dgoss edit -e USE_GENERIC_CACHE=true -e STEAMCACHE_IP=10.0.0.2 -e LANCACHE_IP=10.0.0.1 -e UPSTREAM_DNS="8.8.8.8; 1.1.1.1" $@ lancachenet/lancache-dns:goss-test
+-	RESULT=$?
+-    ;;
+-  *)
+-	if [[ "$1" == "keepimage" ]]; then
+-		KEEPIMAGE=true
+-		shift
+-	fi
+-	dgoss run -e USE_GENERIC_CACHE=true -e STEAMCACHE_IP=10.0.0.2 -e LANCACHE_IP=10.0.0.1 -e UPSTREAM_DNS="8.8.8.8; 1.1.1.1" $@ lancachenet/lancache-dns:goss-test
+-	RESULT=$?
+-    ;;
+-esac
+-[[ "$KEEPIMAGE" == "true" ]] || docker rmi lancachenet/lancache-dns:goss-test
+-
+-exit $RESULT
