@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/local/bin/bash
 
 IFS=' '
 mkdir -p /data/cachedomains
@@ -27,7 +27,7 @@ echo "    default \$http_host;" >> $OUTPUTFILE
 echo "    ~Valve\\/Steam\\ HTTP\\ Client\\ 1\.0£££.* steam;" >> $OUTPUTFILE
 #Next line probably no longer needed as we are now regexing to victory
 #echo "    hostnames;" >> $OUTPUTFILE
-jq -r '.cache_domains | to_entries[] | .key' cache_domains.json | while read CACHE_ENTRY; do 
+jq -r '.cache_domains | to_entries[] | .key' cache_domains.json | while read CACHE_ENTRY; do
 	#for each cache entry, find the cache indentifier
 	CACHE_IDENTIFIER=$(jq -r ".cache_domains[$CACHE_ENTRY].name" cache_domains.json)
 	jq -r ".cache_domains[$CACHE_ENTRY].domain_files | to_entries[] | .key" cache_domains.json | while read CACHEHOSTS_FILEID; do
