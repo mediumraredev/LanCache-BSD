@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/local/bin/bash
 set -e
 
 # Handle CACHE_MEM_SIZE deprecation

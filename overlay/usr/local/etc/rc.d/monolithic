@@ -4,8 +4,6 @@
 # REQUIRE: LOGIN
 # KEYWORD: monolithic
 
-export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin:$PATH
-
 . /etc/rc.subr
 
 name="monolithic"
@@ -17,7 +15,7 @@ set -a
 [ -f /usr/local/etc/lancache/lancache.conf ] && . /usr/local/etc/lancache/lancache.conf
 set +a
 
-# Logic for different commands 
+# Logic for different commands
 start_cmd="monolithic_start"
 stop_cmd="monolithic_stop"
 restart_cmd="monolithic_restart"
@@ -25,13 +23,36 @@ restart_cmd="monolithic_restart"
 # The prestart sequence
 monolithic_prestart() {
     echo "Preparing LanCache environment..."
-    echo "DEBUG: Current PATH is: $PATH"
-    bash /opt/lancache/bin/00_deprecation.sh
-    bash /opt/lancache/bin/05_config_check.sh
-    bash /opt/lancache/bin/10_setup.sh
-    bash /opt/lancache/bin/15_generate_maps.sh
-    bash /opt/lancache/bin/20_perms_check.sh
-    #/usr/local/bin/bash /opt/lancache/bin/test.sh
+
+    /opt/lancache/bin/00_deprecation.sh
+    /opt/lancache/bin/05_config_check.sh
+
+    # Path to config files
+    CONFIG_FILES="/usr/local/etc/lancache/lancache.conf /usr/local/etc/lancache/monolithic/monolithic.conf /usr/local/etc/lancache/lancache-dns/lancache-dns.conf"
+    # Path to hash 
+    HASH_STORE="/var/db/lancache_config.sha256"
+    # Make a new hash file
+    CURRENT_HASH=$(cat $CONFIG_FILES 2>/dev/null | sha256 -q)
+    # Check if hash file is present 
+    if [ ! -f "$HASH_STORE" ]; then
+            echo "No hash file detected creating empty file..."
+            touch $HASH_STORE
+    fi
+
+    LAST_HASH=$(cat "$HASH_STORE" 2>/dev/null)
+
+    # Compare hashes and run scripts if needed
+    if [ "$CURRENT_HASH" != "$LAST_HASH" ]; then
+            echo "First time running Lancache-BSD or detected configuration change running required scripts..."
+    
+            /opt/lancache/bin/10_setup.sh
+            /opt/lancache/bin/15_generate_maps.sh
+            echo "$CURRENT_HASH" > "$HASH_STORE"
+    else
+            echo "No configuration change detected. Skipping setup scripts."
+    fi
+
+    /opt/lancache/bin/20_perms_check.sh
 }
 
 monolithic_start() {

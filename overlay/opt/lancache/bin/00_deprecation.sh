@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/local/bin/bash
 
 if [[ ! -z "${CACHE_DOMAIN_REPO}" ]]; then
 
