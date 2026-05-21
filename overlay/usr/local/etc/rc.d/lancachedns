@@ -1,15 +1,13 @@
 #!/bin/sh
 
-# PROVIDE: lancache-dns
+# PROVIDE: lancachedns
 # REQUIRE: LOGIN
-# KEYWORD: lancache-dns
-
-export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin:$PATH
+# KEYWORD: lancachedns
 
 . /etc/rc.subr
 
-name="lancache-dns"
-rcvar="lancache-dns_enable"
+name="lancachedns"
+rcvar="lancachedns_enable"
 
 # Load environment varibles
 set -a
@@ -18,21 +16,21 @@ set -a
 set +a
 
 # Logic for different commands
-start_cmd="lancache-dns_start"
-stop_cmd="lancache-dns_stop"
-restart_cmd="lancache-dns_restart"
+start_cmd="lancachedns_start"
+stop_cmd="lancachedns_stop"
+restart_cmd="lancachedns_restart"
 
 # The prestart sequence
-lancache-dns_prestart() {
+lancachedns_prestart() {
     echo "Preparing LanCache environment..."
 
     # Path to config files
-    CONFIG_FILES="/usr/local/etc/lancache/lancache.conf /usr/local/etc/lancache/monolithic/monolithic.conf /usr/local/etc/lancache/lancache-dns/lancache-dns.conf"
-    # Path to hash 
+    CONFIG_FILES="/usr/local/etc/lancache/lancache.conf /usr/local/etc/lancache/monolithic/monolithic.conf /usr/local/etc/lancache/lancachedns/lancachedns.conf"
+    # Path to hash
     HASH_STORE="/var/db/lancache_config.sha256"
     # Make a new hash file
     CURRENT_HASH=$(cat $CONFIG_FILES 2>/dev/null | sha256 -q)
-    # Check if hash file is present 
+    # Check if hash file is present
     if [ ! -f "$HASH_STORE" ]; then
             echo "No hash file detected creating empty file..."
             touch $HASH_STORE
@@ -43,7 +41,7 @@ lancache-dns_prestart() {
     # Compare hashes and run scripts if needed
     if [ "$CURRENT_HASH" != "$LAST_HASH" ]; then
             echo "First time running Lancache-BSD or detected configuration change running required scripts..."
-    
+
             /opt/lancache/bin/dnstool.sh
             echo "$CURRENT_HASH" > "$HASH_STORE"
     else
@@ -51,20 +49,20 @@ lancache-dns_prestart() {
     fi
 }
 
-lancache-dns_start() {
-    lancache-dns_prestart
-    echo "Starting bind..."
+lancachedns_start() {
+    lancachedns_prestart
+    echo "Starting LanCache DNS..."
     service named onestart
 }
 
-lancache-dns_stop() {
-    echo "Stopping bind..."
+lancachedns_stop() {
+    echo "Stopping LanCache DNS..."
     service named onestop
 }
 
-lancache-dns_restart() {
-    lancache-dns_stop
-    lancache-dns_start
+lancachedns_restart() {
+    lancachedns_stop
+    lancachedns_start
 }
 
 load_rc_config $name
