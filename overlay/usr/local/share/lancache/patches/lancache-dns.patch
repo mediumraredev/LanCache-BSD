@@ -1,0 +1,677 @@
+diff --git a/.circleci/config.yml b/.circleci/config.yml
+index 3b71307..9e9f523 100644
+--- a/.circleci/config.yml
++++ b/.circleci/config.yml
+@@ -8,9 +8,9 @@ workflows:
+           requires:
+             - test
+           filters:
+-            branches:
+-              only:
+-                - master
++             branches:
++               only:
++                 - master
+ version: 2
+ jobs:
+   test:
+@@ -19,7 +19,7 @@ jobs:
+     steps:
+       - checkout
+
+-      - setup_remote_docker: # (2)
++      - setup_remote_docker:   # (2)
+           docker_layer_caching: false # (3)
+       - run:
+           name: Install goss
+@@ -46,7 +46,8 @@ jobs:
+             docker save -o workspace/lancachenet-lancache-dns.tar lancachenet/lancache-dns:goss-test
+       - persist_to_workspace:
+           root: workspace
+-          paths: lancachenet-lancache-dns.tar
++          paths:
++            lancachenet-lancache-dns.tar
+       - store_test_results:
+           path: reports
+       - store_artifacts:
+@@ -56,7 +57,7 @@ jobs:
+     docker:
+       - image: circleci/python:2-jessie
+     steps:
+-      - setup_remote_docker: # (2)
++      - setup_remote_docker:   # (2)
+           docker_layer_caching: false # (3)
+       - attach_workspace:
+           at: /tmp/workspace
+diff --git a/.editorconfig b/.editorconfig
+deleted file mode 100644
+index bcaa1e3..0000000
+--- a/.editorconfig
++++ /dev/null
+@@ -1,14 +0,0 @@
+-root = true
+-
+-[*]
+-indent_style = space
+-indent_size = 2
+-trim_trailing_whitespace = true
+-end_of_line = lf
+-insert_final_newline = true
+-
+-[*.md]
+-indent_size = 0
+-
+-[*.sh]
+-indent_style = tab
+diff --git a/.github/workflows/mega-linter.yml b/.github/workflows/mega-linter.yml
+deleted file mode 100644
+index ebecca6..0000000
+--- a/.github/workflows/mega-linter.yml
++++ /dev/null
+@@ -1,55 +0,0 @@
+-# MegaLinter GitHub Action configuration file
+-# More info at https://megalinter.io
+----
+-name: MegaLinter
+-
+-on:
+-  pull_request:
+-    branches:
+-      - master
+-
+-env:
+-  GITHUB_STATUS_REPORTER: true
+-
+-concurrency:
+-  group: ${{ github.ref }}-${{ github.workflow }}
+-  cancel-in-progress: true
+-
+-jobs:
+-  megalinter:
+-    name: MegaLinter
+-    runs-on: ubuntu-latest
+-
+-    permissions:
+-      contents: write
+-      issues: write
+-      pull-requests: write
+-
+-    steps:
+-      - name: Checkout Code
+-        uses: actions/checkout@v4
+-        with:
+-          token: ${{ secrets.PAT || secrets.GITHUB_TOKEN }}
+-          fetch-depth: 0
+-
+-      - name: MegaLinter
+-        uses: oxsecurity/megalinter@v8
+-        id: ml
+-        env:
+-          VALIDATE_ALL_CODEBASE: >-
+-            ${{
+-              github.event_name == 'push' &&
+-              github.ref == 'refs/heads/master'
+-            }}
+-
+-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+-
+-      - name: Archive production artifacts
+-        uses: actions/upload-artifact@v4
+-        if: success() || failure()
+-        with:
+-          name: MegaLinter reports
+-          include-hidden-files: "true"
+-          path: |
+-            megalinter-reports
+-            mega-linter.log
+diff --git a/.gitignore b/.gitignore
+deleted file mode 100644
+index b3a9c9d..0000000
+--- a/.gitignore
++++ /dev/null
+@@ -1 +0,0 @@
+-megalinter-reports
+diff --git a/.lefthook.yml b/.lefthook.yml
+deleted file mode 100644
+index 128cbac..0000000
+--- a/.lefthook.yml
++++ /dev/null
+@@ -1,6 +0,0 @@
+-pre-commit:
+-  parallel: true
+-  jobs:
+-    - name: megalinter
+-      run: docker run --rm -e USER=$(id -u) -e GROUP=$(id -g) -v "$PWD:/tmp/lint" oxsecurity/megalinter:beta
+-      stage_fixed: true
+diff --git a/.mega-linter.yml b/.mega-linter.yml
+deleted file mode 100644
+index 0687c88..0000000
+--- a/.mega-linter.yml
++++ /dev/null
+@@ -1,28 +0,0 @@
+-# Configuration file for MegaLinter
+-#
+-# See all available variables at https://megalinter.io/latest/config-file/ and in
+-# linters documentation
+-
+-APPLY_FIXES: all
+-FLAVOR_SUGGESTIONS: false
+-PRINT_ALPACA: false
+-SHOW_ELAPSED_TIME: true
+-
+-ENABLE:
+-  - ACTION
+-  - BASH
+-  - DOCKERFILE
+-  - EDITORCONFIG
+-  - MARKDOWN
+-  - YAML
+-
+-DISABLE_LINTERS:
+-  - MARKDOWN_MARKDOWNLINT
+-  - YAML_V8R
+-
+-BASH_SHELLCHECK_ARGUMENTS: "-f gcc"
+-EDITORCONFIG_EDITORCONFIG_CHECKER_ARGUMENTS: "-f gcc"
+-
+-POST_COMMANDS:
+-  - command: find . -user root -group root -exec chown ${USER}:${GROUP} {} \;
+-    cwd: workspace
+diff --git a/Dockerfile b/Dockerfile
+deleted file mode 100644
+index 83222c8..0000000
+--- a/Dockerfile
++++ /dev/null
+@@ -1,55 +0,0 @@
+-FROM golang:1.27.1-alpine AS builder-dnstool
+-
+-WORKDIR /go/src/
+-
+-RUN <<EOF
+-echo ">> Downloading required apk's..."
+-apk --no-cache add git
+-EOF
+-
+-RUN <<EOF
+-echo ">> Clone dnstool repo..."
+-git clone https://github.com/lancachenet/dnstool.git .
+-EOF
+-
+-RUN <<EOF
+-echo ">> Starting go build..."
+-CGO_ENABLED=0 go build -trimpath -ldflags "-s -w"
+-EOF
+-
+-# hadolint ignore=DL3007
+-FROM lancachenet/ubuntu:latest
+-
+-LABEL org.opencontainers.image.authors="LanCache.Net Team <team@lancache.net>"
+-
+-ENV \
+-  STEAMCACHE_DNS_VERSION=1 \
+-  ENABLE_DNSSEC_VALIDATION=false \
+-  LANCACHE_DNSDOMAIN=cache.lancache.net \
+-  CACHE_DOMAINS_REPO=https://github.com/uklans/cache-domains.git \
+-  CACHE_DOMAINS_BRANCH=master \
+-  UPSTREAM_DNS=8.8.8.8
+-
+-# hadolint ignore=DL3008
+-RUN <<EOF
+-  apt-get update
+-  apt-get install -y bind9 ca-certificates curl dnsutils git --no-install-recommends
+-  apt-get -y clean
+-  rm -rf /var/lib/apt/lists/*
+-EOF
+-
+-RUN  <<EOF
+-  mkdir -p /var/cache/bind /var/log/named
+-  chown bind:bind /var/cache/bind /var/log/named
+-EOF
+-
+-RUN <<EOF
+-  git clone --depth=1 --no-single-branch https://github.com/uklans/cache-domains.git /opt/cache-domains
+-EOF
+-
+-COPY --link overlay/ /
+-COPY --link --from=builder-dnstool /go/src/dnstool /usr/local/bin/dnstool
+-
+-EXPOSE 53/udp
+-EXPOSE 53/tcp
+-WORKDIR /scripts
+diff --git a/ISSUE_TEMPLATE.md b/ISSUE_TEMPLATE.md
+deleted file mode 100644
+index 85effbb..0000000
+--- a/ISSUE_TEMPLATE.md
++++ /dev/null
+@@ -1,20 +0,0 @@
+-### Describe the issue you are having
+-<!-- replace this with your issue description -->
+-
+-### How are you running the container(s)
+-
+-```
+-<!-- Paste your docker run commands or your docker-compose file here -->
+-```
+-
+-### DNS Configuration
+-
+-```
+-<!-- Paste your docker run command for the DNS container OR explain how you have setup DNS on your network to point to the container -->
+-```
+-
+-### Output of container(s)
+-
+-```
+-<!-- Paste any output from the containers here - This will help us identify any issues faster -->
+-```
+diff --git a/goss.yaml b/goss.yaml
+deleted file mode 100644
+index c75f9c8..0000000
+--- a/goss.yaml
++++ /dev/null
+@@ -1,37 +0,0 @@
+-file:
+-  /var/log/named/default.log:
+-    exists: true
+-    contains: []
+-  /var/log/named/general.log:
+-    exists: true
+-    contains: []
+-  /var/log/named/queries.log:
+-    exists: true
+-    contains: []
+-port:
+-  tcp:53:
+-    listening: true
+-dns:
+-  blizzard.cache.lancache.net:
+-    resolvable: true
+-    addrs:
+-      - 10.0.0.1
+-    timeout: 500
+-    server: 127.0.0.1
+-  epicgames.cache.lancache.net:
+-    resolvable: true
+-    addrs:
+-      - 10.0.0.1
+-    timeout: 500
+-    server: 127.0.0.1
+-  steam.cache.lancache.net:
+-    resolvable: true
+-    addrs:
+-      - 10.0.0.2
+-    timeout: 500
+-    server: 127.0.0.1
+-process:
+-  named:
+-    running: true
+-  supervisord:
+-    running: true
+diff --git a/goss_wait.yaml b/goss_wait.yaml
+deleted file mode 100644
+index 4cf7293..0000000
+--- a/goss_wait.yaml
++++ /dev/null
+@@ -1,8 +0,0 @@
+-process:
+-  supervisord:
+-    running: true
+-  named:
+-    running: true
+-port:
+-  tcp:53:
+-    listening: true
+diff --git a/overlay/etc/bind/cache.conf b/overlay/etc/bind/cache.conf
+new file mode 100644
+index 0000000..e69de29
+diff --git a/overlay/etc/bind/named.conf b/overlay/etc/bind/named.conf
+index c74e82d..2c8f2fb 100644
+--- a/overlay/etc/bind/named.conf
++++ b/overlay/etc/bind/named.conf
+@@ -1,2 +1,2 @@
+-include "/etc/bind/named.conf.options";
+-include "/etc/bind/cache.conf";
++include "/usr/local/etc/bind/named.conf.options";
++include "/usr/local/etc/bind/cache.conf";
+diff --git a/overlay/etc/bind/named.conf.options b/overlay/etc/bind/named.conf.options
+index 3b74faa..345747f 100644
+--- a/overlay/etc/bind/named.conf.options
++++ b/overlay/etc/bind/named.conf.options
+@@ -1,123 +1,123 @@
+ options {
+-  directory "/var/cache/bind";
+-  dnssec-validation no;
+-  auth-nxdomain no;    # conform to RFC1035
+-  allow-recursion { any; };
+-  allow-query { any; };
+-  allow-query-cache { any; };
+-  listen-on { any; };
+-  listen-on-v6 { any; };
+-  forward only;
+-
+-  # Permit RFC1918 PTR lookups to be recursed upstream
+-  empty-zones-enable no;
+-  response-policy { zone "rpz"; };
+-  rrset-order { order cyclic; };
+-  #ENABLE_UPSTREAM_DNS#forwarders { dns_ip; };
++        directory "/var/cache/bind";
++        dnssec-validation no;
++        auth-nxdomain no;    # conform to RFC1035
++        allow-recursion { any; };
++        allow-query { any; };
++        allow-query-cache { any; };
++        listen-on { any; };
++        listen-on-v6 { any; };
++	forward only;
++
++	# Permit RFC1918 PTR lookups to be recursed upstream
++	empty-zones-enable no;
++		response-policy { zone "rpz"; };
++		rrset-order { order cyclic; };
++        #ENABLE_UPSTREAM_DNS#forwarders { dns_ip; };
+ };
+
+ logging {
+-  channel default_file {
+-    file "/var/log/named/default.log" versions 3 size 5m;
+-    severity dynamic;
+-    print-time yes;
+-  };
+-  channel general_file {
+-    file "/var/log/named/general.log" versions 3 size 5m;
+-    severity dynamic;
+-    print-time yes;
+-  };
+-  channel database_file {
+-    file "/var/log/named/database.log" versions 3 size 5m;
+-    severity dynamic;
+-    print-time yes;
+-  };
+-  channel security_file {
+-    file "/var/log/named/security.log" versions 3 size 5m;
+-    severity dynamic;
+-    print-time yes;
+-  };
+-  channel config_file {
+-    file "/var/log/named/config.log" versions 3 size 5m;
+-    severity dynamic;
+-    print-time yes;
+-  };
+-  channel resolver_file {
+-    file "/var/log/named/resolver.log" versions 3 size 5m;
+-    severity dynamic;
+-    print-time yes;
+-  };
+-  channel xfer-in_file {
+-    file "/var/log/named/xfer-in.log" versions 3 size 5m;
+-    severity dynamic;
+-    print-time yes;
+-  };
+-  channel xfer-out_file {
+-    file "/var/log/named/xfer-out.log" versions 3 size 5m;
+-    severity dynamic;
+-    print-time yes;
+-  };
+-  channel notify_file {
+-    file "/var/log/named/notify.log" versions 3 size 5m;
+-    severity dynamic;
+-    print-time yes;
+-  };
+-  channel client_file {
+-    file "/var/log/named/client.log" versions 3 size 5m;
+-    severity dynamic;
+-    print-time yes;
+-  };
+-  channel unmatched_file {
+-    file "/var/log/named/unmatched.log" versions 3 size 5m;
+-    severity dynamic;
+-    print-time yes;
+-  };
+-  channel queries_file {
+-    file "/var/log/named/queries.log" versions 3 size 5m;
+-    severity dynamic;
+-    print-time yes;
+-  };
+-  channel network_file {
+-    file "/var/log/named/network.log" versions 3 size 5m;
+-    severity dynamic;
+-    print-time yes;
+-  };
+-  channel update_file {
+-    file "/var/log/named/update.log" versions 3 size 5m;
+-    severity dynamic;
+-    print-time yes;
+-  };
+-  channel dispatch_file {
+-    file "/var/log/named/dispatch.log" versions 3 size 5m;
+-    severity dynamic;
+-    print-time yes;
+-  };
+-  channel dnssec_file {
+-    file "/var/log/named/dnssec.log" versions 3 size 5m;
+-    severity dynamic;
+-    print-time yes;
+-  };
+-  channel lame-servers_file {
+-    file "/var/log/named/lame-servers.log" versions 3 size 5m;
+-    severity dynamic;
+-    print-time yes;
+-  };
++    channel default_file {
++        file "/var/log/named/default.log" versions 3 size 5m;
++        severity dynamic;
++        print-time yes;
++    };
++    channel general_file {
++        file "/var/log/named/general.log" versions 3 size 5m;
++        severity dynamic;
++        print-time yes;
++    };
++    channel database_file {
++        file "/var/log/named/database.log" versions 3 size 5m;
++        severity dynamic;
++        print-time yes;
++    };
++    channel security_file {
++        file "/var/log/named/security.log" versions 3 size 5m;
++        severity dynamic;
++        print-time yes;
++    };
++    channel config_file {
++        file "/var/log/named/config.log" versions 3 size 5m;
++        severity dynamic;
++        print-time yes;
++    };
++    channel resolver_file {
++        file "/var/log/named/resolver.log" versions 3 size 5m;
++        severity dynamic;
++        print-time yes;
++    };
++    channel xfer-in_file {
++        file "/var/log/named/xfer-in.log" versions 3 size 5m;
++        severity dynamic;
++        print-time yes;
++    };
++    channel xfer-out_file {
++        file "/var/log/named/xfer-out.log" versions 3 size 5m;
++        severity dynamic;
++        print-time yes;
++    };
++    channel notify_file {
++        file "/var/log/named/notify.log" versions 3 size 5m;
++        severity dynamic;
++        print-time yes;
++    };
++    channel client_file {
++        file "/var/log/named/client.log" versions 3 size 5m;
++        severity dynamic;
++        print-time yes;
++    };
++    channel unmatched_file {
++        file "/var/log/named/unmatched.log" versions 3 size 5m;
++        severity dynamic;
++        print-time yes;
++    };
++    channel queries_file {
++        file "/var/log/named/queries.log" versions 3 size 5m;
++        severity dynamic;
++        print-time yes;
++    };
++    channel network_file {
++        file "/var/log/named/network.log" versions 3 size 5m;
++        severity dynamic;
++        print-time yes;
++    };
++    channel update_file {
++        file "/var/log/named/update.log" versions 3 size 5m;
++        severity dynamic;
++        print-time yes;
++    };
++    channel dispatch_file {
++        file "/var/log/named/dispatch.log" versions 3 size 5m;
++        severity dynamic;
++        print-time yes;
++    };
++    channel dnssec_file {
++        file "/var/log/named/dnssec.log" versions 3 size 5m;
++        severity dynamic;
++        print-time yes;
++    };
++    channel lame-servers_file {
++        file "/var/log/named/lame-servers.log" versions 3 size 5m;
++        severity dynamic;
++        print-time yes;
++    };
+
+-  category default { default_file; };
+-  category general { general_file; };
+-  category database { database_file; };
+-  category security { security_file; };
+-  category config { config_file; };
+-  category resolver { resolver_file; };
+-  category xfer-in { xfer-in_file; };
+-  category xfer-out { xfer-out_file; };
+-  category notify { notify_file; };
+-  category client { client_file; };
+-  category unmatched { unmatched_file; };
+-  category queries { queries_file; };
+-  category network { network_file; };
+-  category update { update_file; };
+-  category dispatch { dispatch_file; };
+-  category dnssec { dnssec_file; };
+-  category lame-servers { lame-servers_file; };
++    category default { default_file; };
++    category general { general_file; };
++    category database { database_file; };
++    category security { security_file; };
++    category config { config_file; };
++    category resolver { resolver_file; };
++    category xfer-in { xfer-in_file; };
++    category xfer-out { xfer-out_file; };
++    category notify { notify_file; };
++    category client { client_file; };
++    category unmatched { unmatched_file; };
++    category queries { queries_file; };
++    category network { network_file; };
++    category update { update_file; };
++    category dispatch { dispatch_file; };
++    category dnssec { dnssec_file; };
++    category lame-servers { lame-servers_file; };
+ };
+diff --git a/overlay/etc/supervisor/conf.d/bind.conf b/overlay/etc/supervisor/conf.d/bind.conf
+deleted file mode 100644
+index ffa1c24..0000000
+--- a/overlay/etc/supervisor/conf.d/bind.conf
++++ /dev/null
+@@ -1,4 +0,0 @@
+-[program:bind]
+-command=/usr/sbin/named -c /etc/bind/named.conf -u bind -f
+-stdout_events_enabled=true
+-stderr_events_enabled=true
+diff --git a/overlay/hooks/entrypoint-pre.d/10_generate_config.sh b/overlay/hooks/entrypoint-pre.d/10_generate_config.sh
+deleted file mode 100755
+index ff546be..0000000
+--- a/overlay/hooks/entrypoint-pre.d/10_generate_config.sh
++++ /dev/null
+@@ -1,3 +0,0 @@
+-#!/bin/bash
+-
+-/usr/local/bin/dnstool generate lancache-dns
+diff --git a/overlay/hooks/supervisord-pre.d/10_config_check.sh b/overlay/hooks/supervisord-pre.d/10_config_check.sh
+deleted file mode 100755
+index daaac85..0000000
+--- a/overlay/hooks/supervisord-pre.d/10_config_check.sh
++++ /dev/null
+@@ -1,9 +0,0 @@
+-#!/bin/bash
+-set -e
+-
+-echo "Checking Bind9 config"
+-
+-if ! named-checkconf /etc/bind/named.conf; then
+-	echo "Problem with Bind9 configuration - Bailing" >&2
+-	exit 1
+-fi
+diff --git a/run-tests.sh b/run-tests.sh
+deleted file mode 100755
+index 7563608..0000000
+--- a/run-tests.sh
++++ /dev/null
+@@ -1,57 +0,0 @@
+-#!/bin/bash
+-
+-if ! command -v goss >/dev/null 2>&1; then
+-	echo "Please install goss from https://goss.rocks/install"
+-	echo "For a quick auto install run the following"
+-	echo "curl -fsSL https://goss.rocks/install | sh"
+-	exit 1
+-fi
+-
+-docker build --tag lancachenet/lancache-dns:goss-test .
+-case ${1} in
+-circleci)
+-	shift
+-	mkdir -p ./reports/goss
+-	if [[ "${1}" == "keepimage" ]]; then
+-		KEEPIMAGE=true
+-		shift
+-	fi
+-	export GOSS_OPTS="${GOSS_OPTS} --format junit"
+-	dgoss run -e USE_GENERIC_CACHE=true -e STEAMCACHE_IP=10.0.0.2 -e LANCACHE_IP=10.0.0.1 -e UPSTREAM_DNS="8.8.8.8; 1.1.1.1" "$@" lancachenet/lancache-dns:goss-test >reports/goss/report.xml
+-	#store result for exit code
+-	RESULT=$?
+-	#delete the junk that goss currently outputs :(
+-	sed -i '0,/^</d' reports/goss/report.xml
+-	#remove invalid system-err outputs from junit output so circleci can read it
+-	sed -i '/<system-err>.*<\/system-err>/d' reports/goss/report.xml
+-	;;
+-docker)
+-	shift
+-	if [[ "${1}" == "keepimage" ]]; then
+-		KEEPIMAGE=true
+-		shift
+-	fi
+-	dgoss edit -e USE_GENERIC_CACHE=true -e STEAMCACHE_IP=10.0.0.2 -e LANCACHE_IP=10.0.0.1 -e UPSTREAM_DNS="8.8.8.8; 1.1.1.1" "$@" lancachenet/lancache-dns:goss-test
+-	RESULT=$?
+-	;;
+-edit)
+-	shift
+-	if [[ "${1}" == "keepimage" ]]; then
+-		KEEPIMAGE=true
+-		shift
+-	fi
+-	dgoss edit -e USE_GENERIC_CACHE=true -e STEAMCACHE_IP=10.0.0.2 -e LANCACHE_IP=10.0.0.1 -e UPSTREAM_DNS="8.8.8.8; 1.1.1.1" "$@" lancachenet/lancache-dns:goss-test
+-	RESULT=$?
+-	;;
+-*)
+-	if [[ "${1}" == "keepimage" ]]; then
+-		KEEPIMAGE=true
+-		shift
+-	fi
+-	dgoss run -e USE_GENERIC_CACHE=true -e STEAMCACHE_IP=10.0.0.2 -e LANCACHE_IP=10.0.0.1 -e UPSTREAM_DNS="8.8.8.8; 1.1.1.1" "$@" lancachenet/lancache-dns:goss-test
+-	RESULT=$?
+-	;;
+-esac
+-[[ "${KEEPIMAGE}" == "true" ]] || docker rmi lancachenet/lancache-dns:goss-test
+-
+-exit $RESULT
