@@ -1,9 +1,9 @@
 diff --git a/Dockerfile b/Dockerfile
 deleted file mode 100644
-index 3ed4c76..0000000
+index 33db470..0000000
 --- a/Dockerfile
 +++ /dev/null
-@@ -1,50 +0,0 @@
+@@ -1,52 +0,0 @@
 -FROM lancachenet/ubuntu-nginx:latest
 -LABEL version=3
 -LABEL description="Single caching container for caching game content at LAN parties."
@@ -54,6 +54,8 @@ index 3ed4c76..0000000
 -
 -EXPOSE 80 443 8080
 -WORKDIR /scripts
+-
+-HEALTHCHECK --interval=1m --timeout=1s --start-period=120s --retries=3 CMD curl --fail http://127.0.0.1/lancache-heartbeat  || exit 1
 diff --git a/ISSUE_TEMPLATE.md b/ISSUE_TEMPLATE.md
 deleted file mode 100644
 index 85effbb..0000000
@@ -440,15 +442,14 @@ index f35e475..0000000
 -rm -rf $TEMP_PATH
 diff --git a/overlay/hooks/entrypoint-pre.d/20_perms_check.sh b/overlay/hooks/entrypoint-pre.d/20_perms_check.sh
 deleted file mode 100644
-index b686cde..0000000
+index 77bb5e9..0000000
 --- a/overlay/hooks/entrypoint-pre.d/20_perms_check.sh
 +++ /dev/null
-@@ -1,14 +0,0 @@
+@@ -1,12 +0,0 @@
 -#!/bin/bash
 -if [ -d "/data/cache/cache" ]; then
--	echo "Running fast permissions check"
--	ls -l /data/cache/cache | tail --lines=+2 | grep -v ${WEBUSER} > /dev/null
--
+-	echo "Running fast permissions check - listing files that fail permission check:"
+-	su - ${WEBUSER} -c 'find /data/cache/cache -maxdepth 1 ! -readable -o ! -writable | grep . && exit 1 || exit 0'
 -	if [[ $? -eq 0 || "$FORCE_PERMS_CHECK" == "true" ]]; then
 -		echo "Doing full checking of permissions (This WILL take a long time on large caches)..."
 -		find /data \! -user ${WEBUSER} -exec chown ${WEBUSER}:${WEBUSER} '{}' +
@@ -456,7 +457,6 @@ index b686cde..0000000
 -	else
 -		echo "Fast permissions check successful, if you have any permissions error try running with -e FORCE_PERMS_CHECK = true"
 -	fi
--
 -fi
 diff --git a/overlay/hooks/supervisord-pre.d/99_config_check.sh b/overlay/hooks/supervisord-pre.d/99_config_check.sh
 deleted file mode 100644
