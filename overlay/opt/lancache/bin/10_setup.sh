@@ -1,13 +1,13 @@
-#!/usr/local/bin/bash
+#!/bin/sh
 set -e
 
 # Handle CACHE_MEM_SIZE deprecation
-if [[ ! -z "${CACHE_MEM_SIZE}" ]]; then
+if [ -n "${CACHE_MEM_SIZE}" ]; then
     CACHE_INDEX_SIZE=${CACHE_MEM_SIZE}
 fi
 
 # Preprocess UPSTREAM_DNS to allow for multiple resolvers using the same syntax as lancache-dns
-UPSTREAM_DNS="$(echo -n "${UPSTREAM_DNS}" | sed 's/[;]/ /g')"
+UPSTREAM_DNS="$(printf "%s" "${UPSTREAM_DNS}" | sed 's/[;]/ /g')"
 
 echo "worker_processes ${NGINX_WORKER_PROCESSES};" > /usr/local/etc/nginx/workers.conf
 sed -i '' "s/^user .*/user ${WEBUSER};/" /usr/local/etc/nginx/nginx.conf
