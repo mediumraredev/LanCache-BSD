@@ -1,4 +1,4 @@
-#!/usr/local/bin/bash
+#!/bin/sh
 
 IFS=' '
 mkdir -p /data/cachedomains
@@ -7,11 +7,11 @@ echo "Bootstrapping Monolithic from ${CACHE_DOMAINS_REPO}"
 
 export GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
 cd /data/cachedomains
-if [[ ! -d .git ]]; then
+if [ ! -d .git ]; then
 	git clone ${CACHE_DOMAINS_REPO} .
 fi
 
-if [[ "${NOFETCH:-false}" != "true" ]]; then
+if [ "${NOFETCH:-false}" != "true" ]; then
 	# Disable error checking whilst we attempt to get latest
 	set +e
 	git remote set-url origin ${CACHE_DOMAINS_REPO}
@@ -40,11 +40,11 @@ jq -r '.cache_domains | to_entries[] | .key' cache_domains.json | while read CAC
 				#for each file in the hosts file
 				#remove all whitespace (mangles comments but ensures valid config files)
 				echo "host: $CACHE_HOST"
-				CACHE_HOST=${CACHE_HOST// /}
+				CACHE_HOST=$(printf "%s" "${CACHE_HOST}" | tr -d ' ')
 				echo "new host: $CACHE_HOST"
 				if [ ! "x${CACHE_HOST}" == "x" ]; then
 					#Use sed to replace . with \. and * with .*
-					REGEX_CACHE_HOST=$(sed -e "s#\.#\\\.#g" -e "s#\*#\.\*#g" <<< ${CACHE_HOST})
+					REGEX_CACHE_HOST=$(printf "%s" "${CACHE_HOST}" | sed -e "s#\.#\\\.#g" -e "s#\*#\.\*#g")
 					echo "    ~.*£££.*?${REGEX_CACHE_HOST} ${CACHE_IDENTIFIER};" >> $OUTPUTFILE
 				fi
 			done
