@@ -1,8 +1,7 @@
 #!/usr/local/bin/bash
 if [ -d "/data/cache/cache" ]; then
 	echo "Running fast permissions check"
-	ls -l /data/cache/cache | tail --lines=+2 | grep -v ${WEBUSER} > /dev/null
-
+	su -m "${WEBUSER}" -c '/bin/sh -c "find /data/cache/cache -maxdepth 1 \( ! -readable -o ! -writable \) | grep -q . && exit 1 || exit 0"'
 	if [[ $? -eq 0 || "$FORCE_PERMS_CHECK" == "true" ]]; then
 		echo "Doing full checking of permissions (This WILL take a long time on large caches)..."
 		find /data \! -user ${WEBUSER} -exec chown ${WEBUSER}:${WEBUSER} '{}' +
