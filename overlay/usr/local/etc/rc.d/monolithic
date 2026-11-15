@@ -17,22 +17,18 @@ set -a
 [ -f /usr/local/etc/lancache/lancache.conf ] && . /usr/local/etc/lancache/lancache.conf
 set +a
 
-# Logic for different commands
 start_cmd="monolithic_start"
 stop_cmd="monolithic_stop"
 restart_cmd="monolithic_restart"
 
-# The prestart sequence
 monolithic_prestart() {
     echo "Preparing LanCache environment..."
 
-    /opt/lancache/bin/00_deprecation.sh
     /opt/lancache/bin/05_config_check.sh
 
-    # Path to config files
     CONFIG_FILES="/usr/local/etc/lancache/lancache.conf /usr/local/etc/lancache/monolithic/monolithic.conf /usr/local/etc/lancache/lancache-dns/lancache-dns.conf"
-    # Path to hash
     HASH_STORE="/var/db/lancache_config.sha256"
+    
     # Make a new hash file
     CURRENT_HASH=$(cat $CONFIG_FILES 2>/dev/null | sha256 -q)
     # Check if hash file is present
