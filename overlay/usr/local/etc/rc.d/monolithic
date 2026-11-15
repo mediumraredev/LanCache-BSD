@@ -4,6 +4,8 @@
 # REQUIRE: LOGIN
 # KEYWORD: monolithic
 
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin:$PATH
+
 . /etc/rc.subr
 
 name="monolithic"
