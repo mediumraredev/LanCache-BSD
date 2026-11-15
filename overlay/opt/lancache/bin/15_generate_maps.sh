@@ -2,6 +2,7 @@
 
 IFS=' '
 mkdir -p /data/cachedomains
+chown -R $(whoami) /data/cachedomains
 echo "Bootstrapping Monolithic from ${CACHE_DOMAINS_REPO}"
 
 export GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
