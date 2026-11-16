@@ -24,15 +24,18 @@ restart_cmd="monolithic_restart"
 monolithic_prestart() {
     echo "Preparing LanCache environment..."
 
-    /opt/lancache/bin/05_config_check.sh
-    if [ $? -ne 0 ]; then
-    err 1 "Config check failed. Aborting startup."
+    if [ -f /usr/local/etc/nginx/sites-available/cache.conf.d/root/30_cache_key.conf ]; then
+        /opt/lancache/bin/05_config_check.sh
+        if [ $? -ne 0 ]; then
+            err 1 "Config check failed. Aborting startup."
+        fi
+    else
+        echo "No cache config found. Skipping config hash check."
     fi
-
 
     CONFIG_FILES="/usr/local/etc/lancache/lancache.conf /usr/local/etc/lancache/monolithic/monolithic.conf /usr/local/etc/lancache/lancache-dns/lancache-dns.conf"
     HASH_STORE="/var/db/lancache_config.sha256"
-    
+
     # Make a new hash file
     CURRENT_HASH=$(cat $CONFIG_FILES 2>/dev/null | sha256 -q)
     # Check if hash file is present
