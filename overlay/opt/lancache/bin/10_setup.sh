@@ -1,11 +1,6 @@
 #!/bin/sh
 set -e
 
-# Handle CACHE_MEM_SIZE deprecation
-if [ -n "${CACHE_MEM_SIZE}" ]; then
-    CACHE_INDEX_SIZE=${CACHE_MEM_SIZE}
-fi
-
 # Preprocess UPSTREAM_DNS to allow for multiple resolvers using the same syntax as lancache-dns
 UPSTREAM_DNS="$(printf "%s" "${UPSTREAM_DNS}" | sed 's/[;]/ /g')"
 
