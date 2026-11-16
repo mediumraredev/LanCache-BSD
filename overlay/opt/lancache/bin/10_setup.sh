@@ -1,6 +1,9 @@
 #!/bin/sh
 set -e
 
+# Copy across template configuration files from monolithic overlay
+cp -r /usr/local/share/lancache/overlay/monolithic/overlay/etc/ /usr/local/etc/
+
 # Preprocess UPSTREAM_DNS to allow for multiple resolvers using the same syntax as lancache-dns
 UPSTREAM_DNS="$(printf "%s" "${UPSTREAM_DNS}" | sed 's/[;]/ /g')"
 
