@@ -20,3 +20,7 @@ sed -i '' "s/UPSTREAM_DNS/${UPSTREAM_DNS}/"    /usr/local/etc/nginx/sites-availa
 sed -i '' "s/UPSTREAM_DNS/${UPSTREAM_DNS}/"    /usr/local/etc/nginx/stream-available/10_sni.conf
 sed -i '' "s/LOG_FORMAT/${NGINX_LOG_FORMAT}/"  /usr/local/etc/nginx/sites-available/10_cache.conf
 sed -i '' "s/LOG_FORMAT/${NGINX_LOG_FORMAT}/"  /usr/local/etc/nginx/sites-available/20_upstream.conf
+sed -i '' "s#CACHE_ROOT#${CACHE_ROOT}#"  /usr/local/etc/nginx/sites-available/20_upstream.conf
+sed -i '' "s#CACHE_ROOT#${CACHE_ROOT}#"  /usr/local/etc/nginx/sites-available/10_cache.conf
+sed -i '' "s#CACHE_ROOT#${CACHE_ROOT}#"  /usr/local/etc/nginx/stream-available/10_sni.conf
+sed -i '' "s#CACHE_ROOT#${CACHE_ROOT}#"  /usr/local/etc/nginx/conf.d/20_proxy_cache_path.conf
