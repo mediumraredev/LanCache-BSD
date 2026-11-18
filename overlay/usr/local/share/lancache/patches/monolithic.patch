@@ -159,6 +159,13 @@ index aa919f9..0000000
 -port:
 -  tcp:80:
 -    listening: true
+diff --git a/overlay/etc/nginx/conf.d/20_proxy_cache_path.conf b/overlay/etc/nginx/conf.d/20_proxy_cache_path.conf
+index 75f4f02..00e0226 100644
+--- a/overlay/etc/nginx/conf.d/20_proxy_cache_path.conf
++++ b/overlay/etc/nginx/conf.d/20_proxy_cache_path.conf
+@@ -1 +1 @@
+-proxy_cache_path /data/cache/cache levels=2:2 keys_zone=generic:CACHE_INDEX_SIZE inactive=CACHE_MAX_AGE max_size=CACHE_DISK_SIZE min_free=MIN_FREE_DISK loader_files=1000 loader_sleep=50ms loader_threshold=300ms use_temp_path=off;
++proxy_cache_path CACHE_ROOT/cache/cache levels=2:2 keys_zone=generic:CACHE_INDEX_SIZE inactive=CACHE_MAX_AGE max_size=CACHE_DISK_SIZE min_free=MIN_FREE_DISK loader_files=1000 loader_sleep=50ms loader_threshold=300ms use_temp_path=off;
 diff --git a/overlay/etc/nginx/nginx.conf b/overlay/etc/nginx/nginx.conf
 index a3b2da4..a1f0501 100644
 --- a/overlay/etc/nginx/nginx.conf
@@ -214,7 +221,7 @@ index a3b2da4..a1f0501 100644
 +  include /usr/local/etc/nginx/stream-enabled/*;
 +}
 diff --git a/overlay/etc/nginx/sites-available/10_cache.conf b/overlay/etc/nginx/sites-available/10_cache.conf
-index 22071ae..502a611 100644
+index 22071ae..74512de 100644
 --- a/overlay/etc/nginx/sites-available/10_cache.conf
 +++ b/overlay/etc/nginx/sites-available/10_cache.conf
 @@ -2,10 +2,10 @@
@@ -224,19 +231,24 @@ index 22071ae..502a611 100644
 -  listen [::]:80 reuseport;
 +  # listen [::]:80 reuseport;
  
-   access_log /data/logs/access.log LOG_FORMAT;
-   error_log /data/logs/error.log;
+-  access_log /data/logs/access.log LOG_FORMAT;
+-  error_log /data/logs/error.log;
++  access_log CACHE_ROOT/logs/access.log LOG_FORMAT;
++  error_log CACHE_ROOT/logs/error.log;
  
 -  include /etc/nginx/sites-available/cache.conf.d/*.conf;
 +  include /usr/local/etc/nginx/sites-available/cache.conf.d/*.conf;
  }
 diff --git a/overlay/etc/nginx/sites-available/20_upstream.conf b/overlay/etc/nginx/sites-available/20_upstream.conf
-index 305005b..501cf7d 100644
+index 305005b..acf9d8b 100644
 --- a/overlay/etc/nginx/sites-available/20_upstream.conf
 +++ b/overlay/etc/nginx/sites-available/20_upstream.conf
-@@ -13,5 +13,5 @@ server {
+@@ -11,7 +11,7 @@ server {
+   # No access_log tracking as all requests to this instance are already logged through monolithic
+ 
    # access_log /data/logs/upstream-access.log LOG_FORMAT;
-   error_log /data/logs/upstream-error.log;
+-  error_log /data/logs/upstream-error.log;
++  error_log CACHE_ROOT/logs/upstream-error.log;
  
 -  include /etc/nginx/sites-available/upstream.conf.d/*.conf;
 +  include /usr/local/etc/nginx/sites-available/upstream.conf.d/*.conf;
@@ -265,6 +277,19 @@ index 11b519c..7755340 100644
      add_header 'Access-Control-Expose-Headers' '*';
      add_header 'Access-Control-Allow-Origin' '*';
      return 204;
+diff --git a/overlay/etc/nginx/stream-available/10_sni.conf b/overlay/etc/nginx/stream-available/10_sni.conf
+index 87b0cea..b917c3b 100644
+--- a/overlay/etc/nginx/stream-available/10_sni.conf
++++ b/overlay/etc/nginx/stream-available/10_sni.conf
+@@ -6,6 +6,6 @@ server {
+   proxy_pass  $ssl_preread_server_name:443;
+   ssl_preread on;
+ 
+-  access_log /data/logs/stream-access.log stream_basic;
+-  error_log /data/logs/stream-error.log;
++  access_log CACHE_ROOT/logs/stream-access.log stream_basic;
++  error_log CACHE_ROOT/logs/stream-error.log;
+ }
 diff --git a/overlay/etc/supervisor/conf.d/heartbeat.conf b/overlay/etc/supervisor/conf.d/heartbeat.conf
 deleted file mode 100644
 index 004cab3..0000000
