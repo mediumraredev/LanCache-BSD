@@ -1,12 +1,12 @@
 #!/bin/sh
 
 IFS=' '
-mkdir -p /data/cachedomains
-chown -R $(whoami) /data/cachedomains
+mkdir -p ${CACHE_ROOT}/cachedomains
+chown -R $(whoami) ${CACHE_ROOT}/cachedomains
 echo "Bootstrapping Monolithic from ${CACHE_DOMAINS_REPO}"
 
 export GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
-cd /data/cachedomains
+cd ${CACHE_ROOT}/cachedomains
 if [ ! -d .git ]; then
 	git clone ${CACHE_DOMAINS_REPO} .
 fi

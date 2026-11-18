@@ -17,10 +17,10 @@ print_confighash_warning () {
 DETECTED_CACHE_KEY=$(grep proxy_cache_key /usr/local/etc/nginx/sites-available/cache.conf.d/root/30_cache_key.conf | awk '{print $2}')
 NEWHASH="GENERICCACHE_VERSION=${GENERICCACHE_VERSION};CACHE_MODE=${CACHE_MODE};CACHE_SLICE_SIZE=${CACHE_SLICE_SIZE};CACHE_KEY=${DETECTED_CACHE_KEY}"
 
-if [ -d /data/cache/cache ]; then
+if [ -d "${CACHE_ROOT}"/cache/cache ]; then
 	echo " Detected existing cache data, checking config hash for consistency"
-	if [ -f /data/cache/CONFIGHASH ]; then
-		OLDHASH=$(cat /data/cache/CONFIGHASH)
+	if [ -f "${CACHE_ROOT}"/cache/CONFIGHASH ]; then
+		OLDHASH=$(cat "${CACHE_ROOT}"/cache/CONFIGHASH)
 		if [ "${OLDHASH}" != "${NEWHASH}" ]; then
 			echo "ERROR: Detected CONFIGHASH does not match current CONFIGHASH"
 			echo " Detected: ${OLDHASH}"
@@ -42,5 +42,5 @@ if [ -d /data/cache/cache ]; then
 	fi
 fi
 
-mkdir -p /data/cache/cache
-echo "${NEWHASH}" > /data/cache/CONFIGHASH
+mkdir -p "${CACHE_ROOT}"/cache/cache
+echo "${NEWHASH}" > "${CACHE_ROOT}"/cache/CONFIGHASH
