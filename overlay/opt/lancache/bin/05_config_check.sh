@@ -43,4 +43,6 @@ if [ -d "${CACHE_ROOT}"/cache/cache ]; then
 fi
 
 mkdir -p "${CACHE_ROOT}"/cache/cache
+mkdir -p "${CACHE_ROOT}"/logs
+mkdir -p "${CACHE_ROOT}"/cachedomains
 echo "${NEWHASH}" > "${CACHE_ROOT}"/cache/CONFIGHASH
