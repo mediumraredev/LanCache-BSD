@@ -1,3 +1,42 @@
+From 0c371bf0e6e61bf35eb516b5ddf1d0cc229afbdb Mon Sep 17 00:00:00 2001
+From: mediumraredev <167935824+mediumraredev@users.noreply.github.com>
+Date: Sun, 6 Sep 2026 20:28:48 +1000
+Subject: [PATCH] Clean branch with unwanted files removed
+
+---
+ .circleci/config.yml                          |  13 +-
+ .editorconfig                                 |  14 --
+ .github/workflows/mega-linter.yml             |  55 ----
+ .gitignore                                    |   1 -
+ .lefthook.yml                                 |   6 -
+ .mega-linter.yml                              |  28 ---
+ Dockerfile                                    |  55 ----
+ ISSUE_TEMPLATE.md                             |  20 --
+ goss.yaml                                     |  37 ---
+ goss_wait.yaml                                |   8 -
+ overlay/etc/bind/cache.conf                   |   0
+ overlay/etc/bind/named.conf                   |   4 +-
+ overlay/etc/bind/named.conf.options           | 234 +++++++++---------
+ overlay/etc/supervisor/conf.d/bind.conf       |   4 -
+ .../entrypoint-pre.d/10_generate_config.sh    |   3 -
+ .../supervisord-pre.d/10_config_check.sh      |   9 -
+ run-tests.sh                                  |  57 -----
+ 17 files changed, 126 insertions(+), 422 deletions(-)
+ delete mode 100644 .editorconfig
+ delete mode 100644 .github/workflows/mega-linter.yml
+ delete mode 100644 .gitignore
+ delete mode 100644 .lefthook.yml
+ delete mode 100644 .mega-linter.yml
+ delete mode 100644 Dockerfile
+ delete mode 100644 ISSUE_TEMPLATE.md
+ delete mode 100644 goss.yaml
+ delete mode 100644 goss_wait.yaml
+ create mode 100644 overlay/etc/bind/cache.conf
+ delete mode 100644 overlay/etc/supervisor/conf.d/bind.conf
+ delete mode 100755 overlay/hooks/entrypoint-pre.d/10_generate_config.sh
+ delete mode 100755 overlay/hooks/supervisord-pre.d/10_config_check.sh
+ delete mode 100755 run-tests.sh
+
 diff --git a/.circleci/config.yml b/.circleci/config.yml
 index 3b71307..9e9f523 100644
 --- a/.circleci/config.yml
@@ -10,7 +49,7 @@ index 3b71307..9e9f523 100644
 -              only:
 -                - master
 +             branches:
-+               only:
++               only: 
 +                 - master
  version: 2
  jobs:
@@ -18,7 +57,7 @@ index 3b71307..9e9f523 100644
 @@ -19,7 +19,7 @@ jobs:
      steps:
        - checkout
-
+ 
 -      - setup_remote_docker: # (2)
 +      - setup_remote_docker:   # (2)
            docker_layer_caching: false # (3)
@@ -363,14 +402,14 @@ index 3b74faa..345747f 100644
 +        listen-on { any; };
 +        listen-on-v6 { any; };
 +	forward only;
-+
++	
 +	# Permit RFC1918 PTR lookups to be recursed upstream
 +	empty-zones-enable no;
 +		response-policy { zone "rpz"; };
 +		rrset-order { order cyclic; };
 +        #ENABLE_UPSTREAM_DNS#forwarders { dns_ip; };
  };
-
+ 
  logging {
 -  channel default_file {
 -    file "/var/log/named/default.log" versions 3 size 5m;
@@ -542,7 +581,7 @@ index 3b74faa..345747f 100644
 +        severity dynamic;
 +        print-time yes;
 +    };
-
+ 
 -  category default { default_file; };
 -  category general { general_file; };
 -  category database { database_file; };
@@ -675,3 +714,8 @@ index 7563608..0000000
 -[[ "${KEEPIMAGE}" == "true" ]] || docker rmi lancachenet/lancache-dns:goss-test
 -
 -exit $RESULT
+
+base-commit: 86e86a0eed5daed51c67f27d663a179653c90955
+-- 
+2.54.0 (Apple Git-157)
+
