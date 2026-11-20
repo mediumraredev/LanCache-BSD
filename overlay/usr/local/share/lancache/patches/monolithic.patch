@@ -1,3 +1,81 @@
+From 99847129b41b08c66ae093bb8bd90def9b4dd8eb Mon Sep 17 00:00:00 2001
+From: mediumraredev <167935824+mediumraredev@users.noreply.github.com>
+Date: Tue, 14 Apr 2026 19:53:10 +1000
+Subject: [PATCH 01/13] Rmeoved unnecessary scripts
+
+---
+ build-locally.sh | 22 ----------------------
+ run-tests.sh     |  9 ---------
+ 2 files changed, 31 deletions(-)
+ delete mode 100755 build-locally.sh
+ delete mode 100755 run-tests.sh
+
+diff --git a/build-locally.sh b/build-locally.sh
+deleted file mode 100755
+index fe70881..0000000
+--- a/build-locally.sh
++++ /dev/null
+@@ -1,22 +0,0 @@
+-#!/bin/bash
+-#This script build the monolithic image locally, for cases like the raspberry pi, which operates on arm64 architecture, which isn't officially supported.
+-
+-PURPLEBOLD="$(tput setf 5 bold)"
+-
+-printf "${PURPLEBOLD}Building temporary modified Ubuntu image:\n"
+-docker build -t lancachenet/ubuntu:latest --progress tty https://github.com/lancachenet/ubuntu.git
+-
+-printf  "${PURPLEBOLD}Building temporary Ubuntu-Nginx image:\n"
+-docker build -t lancachenet/ubuntu-nginx:latest --progress tty https://github.com/lancachenet/ubuntu-nginx.git
+-
+-printf "${PURPLEBOLD}Building Monolithic image:\n"
+-docker build -t lancachenet/monolithic:latest --progress tty .
+-
+-printf "${PURPLEBOLD}Removing temporary Ubuntu image:\n"
+-docker rmi lancachenet/ubuntu
+-
+-printf "${PURPLEBOLD}Removing temporary Ubuntu-Nginx image:\n"
+-docker rmi lancachenet/ubuntu-nginx
+-
+-printf "${PURPLEBOLD}Completed local build. Image now available as lancachenet/monolithic:latest\n"
+-docker image ls lancachenet/monolithic:latest
+\ No newline at end of file
+diff --git a/run-tests.sh b/run-tests.sh
+deleted file mode 100755
+index 3a1ff52..0000000
+--- a/run-tests.sh
++++ /dev/null
+@@ -1,9 +0,0 @@
+-#!/bin/bash
+-
+-if [[ "$@" == *" -- "* ]]; then
+-	SD_LOGLEVEL="-e SUPERVISORD_LOGLEVEL=INFO"
+-else
+-	SD_LOGLEVEL="-- -e SUPERVISORD_LOGLEVEL=INFO"
+-fi
+-
+-curl -fsSL https://raw.githubusercontent.com/lancachenet/test-suite/master/dgoss-tests.sh | bash -s -- --imagename="lancachenet/monolithic:goss-test" $@ $SD_LOGLEVEL -e GOSS_LOGLEVEL=DEBUG
+
+base-commit: f7057caff38bed4d5981114ad895792e2e230b99
+-- 
+2.54.0 (Apple Git-157)
+
+
+From 640a1b40751885d388e83acf6dba468ac2566de5 Mon Sep 17 00:00:00 2001
+From: mediumraredev <167935824+mediumraredev@users.noreply.github.com>
+Date: Tue, 14 Apr 2026 19:55:34 +1000
+Subject: [PATCH 02/13] Removed container files that aren't needed
+
+---
+ Dockerfile        | 52 -----------------------------------------------
+ ISSUE_TEMPLATE.md | 20 ------------------
+ goss.yaml         | 28 -------------------------
+ goss_wait.yaml    |  8 --------
+ 4 files changed, 108 deletions(-)
+ delete mode 100644 Dockerfile
+ delete mode 100644 ISSUE_TEMPLATE.md
+ delete mode 100644 goss.yaml
+ delete mode 100644 goss_wait.yaml
+
 diff --git a/Dockerfile b/Dockerfile
 deleted file mode 100644
 index 33db470..0000000
@@ -82,35 +160,6 @@ index 85effbb..0000000
 -```
 -<!-- Paste any output from the containers here - This will help us identify any issues faster -->
 -```
-diff --git a/build-locally.sh b/build-locally.sh
-deleted file mode 100755
-index fe70881..0000000
---- a/build-locally.sh
-+++ /dev/null
-@@ -1,22 +0,0 @@
--#!/bin/bash
--#This script build the monolithic image locally, for cases like the raspberry pi, which operates on arm64 architecture, which isn't officially supported.
--
--PURPLEBOLD="$(tput setf 5 bold)"
--
--printf "${PURPLEBOLD}Building temporary modified Ubuntu image:\n"
--docker build -t lancachenet/ubuntu:latest --progress tty https://github.com/lancachenet/ubuntu.git
--
--printf  "${PURPLEBOLD}Building temporary Ubuntu-Nginx image:\n"
--docker build -t lancachenet/ubuntu-nginx:latest --progress tty https://github.com/lancachenet/ubuntu-nginx.git
--
--printf "${PURPLEBOLD}Building Monolithic image:\n"
--docker build -t lancachenet/monolithic:latest --progress tty .
--
--printf "${PURPLEBOLD}Removing temporary Ubuntu image:\n"
--docker rmi lancachenet/ubuntu
--
--printf "${PURPLEBOLD}Removing temporary Ubuntu-Nginx image:\n"
--docker rmi lancachenet/ubuntu-nginx
--
--printf "${PURPLEBOLD}Completed local build. Image now available as lancachenet/monolithic:latest\n"
--docker image ls lancachenet/monolithic:latest
-\ No newline at end of file
 diff --git a/goss.yaml b/goss.yaml
 deleted file mode 100644
 index 54e5354..0000000
@@ -159,100 +208,20 @@ index aa919f9..0000000
 -port:
 -  tcp:80:
 -    listening: true
-diff --git a/overlay/etc/nginx/conf.d/20_proxy_cache_path.conf b/overlay/etc/nginx/conf.d/20_proxy_cache_path.conf
-index 75f4f02..00e0226 100644
---- a/overlay/etc/nginx/conf.d/20_proxy_cache_path.conf
-+++ b/overlay/etc/nginx/conf.d/20_proxy_cache_path.conf
-@@ -1 +1 @@
--proxy_cache_path /data/cache/cache levels=2:2 keys_zone=generic:CACHE_INDEX_SIZE inactive=CACHE_MAX_AGE max_size=CACHE_DISK_SIZE min_free=MIN_FREE_DISK loader_files=1000 loader_sleep=50ms loader_threshold=300ms use_temp_path=off;
-+proxy_cache_path CACHE_ROOT/cache/cache levels=2:2 keys_zone=generic:CACHE_INDEX_SIZE inactive=CACHE_MAX_AGE max_size=CACHE_DISK_SIZE min_free=MIN_FREE_DISK loader_files=1000 loader_sleep=50ms loader_threshold=300ms use_temp_path=off;
-diff --git a/overlay/etc/nginx/nginx.conf b/overlay/etc/nginx/nginx.conf
-index a3b2da4..a1f0501 100644
---- a/overlay/etc/nginx/nginx.conf
-+++ b/overlay/etc/nginx/nginx.conf
-@@ -1,13 +1,14 @@
--user www-data;
--include /etc/nginx/workers.conf;
--pid /run/nginx.pid;
-+load_module /usr/local/libexec/nginx/ngx_stream_module.so;
-+user www;
-+include /usr/local/etc/nginx/workers.conf;
-+pid /var/run/nginx.pid;
- 
--include /etc/nginx/modules-enabled/*.conf;
-+include /usr/local/etc/nginx/modules-enabled/*.conf;
- 
- events {
-   worker_connections 4096;
-   multi_accept on;
--  use epoll;
-+  use kqueue;
- }
- 
- http {
-@@ -18,7 +19,7 @@ http {
-   keepalive_timeout 65;
-   types_hash_max_size 2048;
- 
--  include /etc/nginx/mime.types;
-+  include /usr/local/etc/nginx/mime.types;
-   default_type application/octet-stream;
- 
-   access_log /var/log/nginx/access.log;
-@@ -28,14 +29,13 @@ http {
- 
-   gzip on;
- 
--  include /etc/nginx/conf.d/*.conf;
-+  include /usr/local/etc/nginx/conf.d/*.conf;
- 
--  include /etc/nginx/sites-enabled/*.conf;
-+  include /usr/local/etc/nginx/sites-enabled/*.conf;
- }
- 
- 
--stream {                                
--  include /etc/nginx/stream.d/*.conf; 
--  include /etc/nginx/stream-enabled/*;
--}                                       
--
-+stream {
-+  include /usr/local/etc/nginx/stream.d/*.conf;
-+  include /usr/local/etc/nginx/stream-enabled/*;
-+}
-diff --git a/overlay/etc/nginx/sites-available/10_cache.conf b/overlay/etc/nginx/sites-available/10_cache.conf
-index 22071ae..74512de 100644
---- a/overlay/etc/nginx/sites-available/10_cache.conf
-+++ b/overlay/etc/nginx/sites-available/10_cache.conf
-@@ -2,10 +2,10 @@
- 
- server {
-   listen 80 reuseport;
--  listen [::]:80 reuseport;
-+  # listen [::]:80 reuseport;
- 
--  access_log /data/logs/access.log LOG_FORMAT;
--  error_log /data/logs/error.log;
-+  access_log CACHE_ROOT/logs/access.log LOG_FORMAT;
-+  error_log CACHE_ROOT/logs/error.log;
- 
--  include /etc/nginx/sites-available/cache.conf.d/*.conf;
-+  include /usr/local/etc/nginx/sites-available/cache.conf.d/*.conf;
- }
-diff --git a/overlay/etc/nginx/sites-available/20_upstream.conf b/overlay/etc/nginx/sites-available/20_upstream.conf
-index 305005b..acf9d8b 100644
---- a/overlay/etc/nginx/sites-available/20_upstream.conf
-+++ b/overlay/etc/nginx/sites-available/20_upstream.conf
-@@ -11,7 +11,7 @@ server {
-   # No access_log tracking as all requests to this instance are already logged through monolithic
- 
-   # access_log /data/logs/upstream-access.log LOG_FORMAT;
--  error_log /data/logs/upstream-error.log;
-+  error_log CACHE_ROOT/logs/upstream-error.log;
- 
--  include /etc/nginx/sites-available/upstream.conf.d/*.conf;
-+  include /usr/local/etc/nginx/sites-available/upstream.conf.d/*.conf;
- }
+-- 
+2.54.0 (Apple Git-157)
+
+
+From bdda6793a0a93a9a30646c128993b2cf121570ff Mon Sep 17 00:00:00 2001
+From: mediumraredev <167935824+mediumraredev@users.noreply.github.com>
+Date: Wed, 15 Apr 2026 09:45:08 +1000
+Subject: [PATCH 03/13] Corrected paths from /etc to /usr/local/etc in configs
+
+---
+ overlay/etc/nginx/sites-available/cache.conf.d/10_root.conf     | 2 +-
+ .../sites-available/cache.conf.d/90_lancache_heartbeat.conf     | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
 diff --git a/overlay/etc/nginx/sites-available/cache.conf.d/10_root.conf b/overlay/etc/nginx/sites-available/cache.conf.d/10_root.conf
 index f065502..c7f3404 100644
 --- a/overlay/etc/nginx/sites-available/cache.conf.d/10_root.conf
@@ -277,29 +246,123 @@ index 11b519c..7755340 100644
      add_header 'Access-Control-Expose-Headers' '*';
      add_header 'Access-Control-Allow-Origin' '*';
      return 204;
-diff --git a/overlay/etc/nginx/stream-available/10_sni.conf b/overlay/etc/nginx/stream-available/10_sni.conf
-index 87b0cea..b917c3b 100644
---- a/overlay/etc/nginx/stream-available/10_sni.conf
-+++ b/overlay/etc/nginx/stream-available/10_sni.conf
-@@ -6,6 +6,6 @@ server {
-   proxy_pass  $ssl_preread_server_name:443;
-   ssl_preread on;
+-- 
+2.54.0 (Apple Git-157)
+
+
+From bd9a52313791acdd779f3e422f527076373af683 Mon Sep 17 00:00:00 2001
+From: mediumraredev <167935824+mediumraredev@users.noreply.github.com>
+Date: Wed, 15 Apr 2026 10:22:26 +1000
+Subject: [PATCH 04/13] Modified /etc to /usr/local/etc in more configs
+
+---
+ overlay/etc/nginx/sites-available/10_cache.conf    | 2 +-
+ overlay/etc/nginx/sites-available/20_upstream.conf | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/overlay/etc/nginx/sites-available/10_cache.conf b/overlay/etc/nginx/sites-available/10_cache.conf
+index 22071ae..ea956b4 100644
+--- a/overlay/etc/nginx/sites-available/10_cache.conf
++++ b/overlay/etc/nginx/sites-available/10_cache.conf
+@@ -7,5 +7,5 @@ server {
+   access_log /data/logs/access.log LOG_FORMAT;
+   error_log /data/logs/error.log;
  
--  access_log /data/logs/stream-access.log stream_basic;
--  error_log /data/logs/stream-error.log;
-+  access_log CACHE_ROOT/logs/stream-access.log stream_basic;
-+  error_log CACHE_ROOT/logs/stream-error.log;
+-  include /etc/nginx/sites-available/cache.conf.d/*.conf;
++  include /usr/local/etc/nginx/sites-available/cache.conf.d/*.conf;
  }
-diff --git a/overlay/etc/supervisor/conf.d/heartbeat.conf b/overlay/etc/supervisor/conf.d/heartbeat.conf
-deleted file mode 100644
-index 004cab3..0000000
---- a/overlay/etc/supervisor/conf.d/heartbeat.conf
-+++ /dev/null
-@@ -1,4 +0,0 @@
--[program:heartbeat]
--command=/scripts/heartbeat.sh
--stdout_events_enabled=true
--stderr_events_enabled=true
+diff --git a/overlay/etc/nginx/sites-available/20_upstream.conf b/overlay/etc/nginx/sites-available/20_upstream.conf
+index 305005b..501cf7d 100644
+--- a/overlay/etc/nginx/sites-available/20_upstream.conf
++++ b/overlay/etc/nginx/sites-available/20_upstream.conf
+@@ -13,5 +13,5 @@ server {
+   # access_log /data/logs/upstream-access.log LOG_FORMAT;
+   error_log /data/logs/upstream-error.log;
+ 
+-  include /etc/nginx/sites-available/upstream.conf.d/*.conf;
++  include /usr/local/etc/nginx/sites-available/upstream.conf.d/*.conf;
+ }
+-- 
+2.54.0 (Apple Git-157)
+
+
+From 85f7aec49cb2170594266d600665ed7f0ca274dd Mon Sep 17 00:00:00 2001
+From: mediumraredev <167935824+mediumraredev@users.noreply.github.com>
+Date: Wed, 15 Apr 2026 10:27:36 +1000
+Subject: [PATCH 05/13] Adjusted paths in nginx.conf
+
+---
+ overlay/etc/nginx/nginx.conf | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/overlay/etc/nginx/nginx.conf b/overlay/etc/nginx/nginx.conf
+index a3b2da4..afa9463 100644
+--- a/overlay/etc/nginx/nginx.conf
++++ b/overlay/etc/nginx/nginx.conf
+@@ -1,8 +1,8 @@
+ user www-data;
+-include /etc/nginx/workers.conf;
+-pid /run/nginx.pid;
++include /usr/local/etc/nginx/workers.conf;
++pid /var/run/nginx.pid;
+ 
+-include /etc/nginx/modules-enabled/*.conf;
++include /usr/local/etc/nginx/modules-enabled/*.conf;
+ 
+ events {
+   worker_connections 4096;
+@@ -18,7 +18,7 @@ http {
+   keepalive_timeout 65;
+   types_hash_max_size 2048;
+ 
+-  include /etc/nginx/mime.types;
++  include /usr/local/etc/nginx/mime.types;
+   default_type application/octet-stream;
+ 
+   access_log /var/log/nginx/access.log;
+@@ -28,14 +28,14 @@ http {
+ 
+   gzip on;
+ 
+-  include /etc/nginx/conf.d/*.conf;
++  include /usr/local/etc/nginx/conf.d/*.conf;
+ 
+-  include /etc/nginx/sites-enabled/*.conf;
++  include /usr/local/etc/nginx/sites-enabled/*.conf;
+ }
+ 
+ 
+ stream {                                
+-  include /etc/nginx/stream.d/*.conf; 
+-  include /etc/nginx/stream-enabled/*;
++  include /usr/local/etc/nginx/stream.d/*.conf; 
++  include /usr/local/etc/nginx/stream-enabled/*;
+ }                                       
+ 
+-- 
+2.54.0 (Apple Git-157)
+
+
+From 4addc61d0b4e5aefe21274058c98111ad77e0b07 Mon Sep 17 00:00:00 2001
+From: mediumraredev <167935824+mediumraredev@users.noreply.github.com>
+Date: Wed, 15 Apr 2026 10:34:47 +1000
+Subject: [PATCH 06/13] Removed scripts that will be implemented into install
+
+---
+ .../hooks/entrypoint-pre.d/00_deprecation.sh  | 15 -----
+ .../hooks/entrypoint-pre.d/05_config_check.sh | 46 ---------------
+ overlay/hooks/entrypoint-pre.d/10_setup.sh    | 24 --------
+ .../entrypoint-pre.d/15_generate_maps.sh      | 56 -------------------
+ .../hooks/entrypoint-pre.d/20_perms_check.sh  | 12 ----
+ .../supervisord-pre.d/99_config_check.sh      | 17 ------
+ 6 files changed, 170 deletions(-)
+ delete mode 100644 overlay/hooks/entrypoint-pre.d/00_deprecation.sh
+ delete mode 100644 overlay/hooks/entrypoint-pre.d/05_config_check.sh
+ delete mode 100644 overlay/hooks/entrypoint-pre.d/10_setup.sh
+ delete mode 100644 overlay/hooks/entrypoint-pre.d/15_generate_maps.sh
+ delete mode 100644 overlay/hooks/entrypoint-pre.d/20_perms_check.sh
+ delete mode 100644 overlay/hooks/supervisord-pre.d/99_config_check.sh
+
 diff --git a/overlay/hooks/entrypoint-pre.d/00_deprecation.sh b/overlay/hooks/entrypoint-pre.d/00_deprecation.sh
 deleted file mode 100644
 index a841f3b..0000000
@@ -506,18 +569,220 @@ index cbf3956..0000000
 -else
 -    echo "Monitor access.log and error.log on the host for cache activity"
 -fi
-diff --git a/run-tests.sh b/run-tests.sh
-deleted file mode 100755
-index 3a1ff52..0000000
---- a/run-tests.sh
+-- 
+2.54.0 (Apple Git-157)
+
+
+From 86dbc15eb92b0468d1a2de565b490efc297db119 Mon Sep 17 00:00:00 2001
+From: mediumraredev <167935824+mediumraredev@users.noreply.github.com>
+Date: Wed, 15 Apr 2026 10:36:15 +1000
+Subject: [PATCH 07/13] Removed supervisor, will be handled by RC
+
+---
+ overlay/etc/supervisor/conf.d/heartbeat.conf | 4 ----
+ 1 file changed, 4 deletions(-)
+ delete mode 100644 overlay/etc/supervisor/conf.d/heartbeat.conf
+
+diff --git a/overlay/etc/supervisor/conf.d/heartbeat.conf b/overlay/etc/supervisor/conf.d/heartbeat.conf
+deleted file mode 100644
+index 004cab3..0000000
+--- a/overlay/etc/supervisor/conf.d/heartbeat.conf
 +++ /dev/null
-@@ -1,9 +0,0 @@
--#!/bin/bash
+@@ -1,4 +0,0 @@
+-[program:heartbeat]
+-command=/scripts/heartbeat.sh
+-stdout_events_enabled=true
+-stderr_events_enabled=true
+-- 
+2.54.0 (Apple Git-157)
+
+
+From 3b721dc837a04d2f0c4df895d3144fed0207407c Mon Sep 17 00:00:00 2001
+From: mediumraredev <167935824+mediumraredev@users.noreply.github.com>
+Date: Fri, 24 Apr 2026 12:05:47 +1000
+Subject: [PATCH 08/13] Fixed whitespace in nginx.conf
+
+---
+ overlay/etc/nginx/nginx.conf | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/overlay/etc/nginx/nginx.conf b/overlay/etc/nginx/nginx.conf
+index afa9463..b7da374 100644
+--- a/overlay/etc/nginx/nginx.conf
++++ b/overlay/etc/nginx/nginx.conf
+@@ -34,8 +34,7 @@ http {
+ }
+ 
+ 
+-stream {                                
+-  include /usr/local/etc/nginx/stream.d/*.conf; 
++stream {
++  include /usr/local/etc/nginx/stream.d/*.conf;
+   include /usr/local/etc/nginx/stream-enabled/*;
+-}                                       
 -
--if [[ "$@" == *" -- "* ]]; then
--	SD_LOGLEVEL="-e SUPERVISORD_LOGLEVEL=INFO"
--else
--	SD_LOGLEVEL="-- -e SUPERVISORD_LOGLEVEL=INFO"
--fi
--
--curl -fsSL https://raw.githubusercontent.com/lancachenet/test-suite/master/dgoss-tests.sh | bash -s -- --imagename="lancachenet/monolithic:goss-test" $@ $SD_LOGLEVEL -e GOSS_LOGLEVEL=DEBUG
++}
+-- 
+2.54.0 (Apple Git-157)
+
+
+From fde406e7547d0258822a8873dd1c9fb6f0a42f90 Mon Sep 17 00:00:00 2001
+From: mediumraredev <167935824+mediumraredev@users.noreply.github.com>
+Date: Sat, 25 Apr 2026 10:38:55 +1000
+Subject: [PATCH 09/13] Changed user to www in nginx.conf
+
+---
+ overlay/etc/nginx/nginx.conf | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/overlay/etc/nginx/nginx.conf b/overlay/etc/nginx/nginx.conf
+index b7da374..1684b51 100644
+--- a/overlay/etc/nginx/nginx.conf
++++ b/overlay/etc/nginx/nginx.conf
+@@ -1,4 +1,4 @@
+-user www-data;
++user www;
+ include /usr/local/etc/nginx/workers.conf;
+ pid /var/run/nginx.pid;
+ 
+-- 
+2.54.0 (Apple Git-157)
+
+
+From 5825b3c70785c6de5d6ed31c15c01d9504e2fad5 Mon Sep 17 00:00:00 2001
+From: mediumraredev <167935824+mediumraredev@users.noreply.github.com>
+Date: Sun, 26 Apr 2026 11:54:16 +1000
+Subject: [PATCH 10/13] changed use epoll to use kqueue in nginx.conf
+
+---
+ overlay/etc/nginx/nginx.conf | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/overlay/etc/nginx/nginx.conf b/overlay/etc/nginx/nginx.conf
+index 1684b51..1e7242a 100644
+--- a/overlay/etc/nginx/nginx.conf
++++ b/overlay/etc/nginx/nginx.conf
+@@ -7,7 +7,7 @@ include /usr/local/etc/nginx/modules-enabled/*.conf;
+ events {
+   worker_connections 4096;
+   multi_accept on;
+-  use epoll;
++  use kqueue;
+ }
+ 
+ http {
+-- 
+2.54.0 (Apple Git-157)
+
+
+From c4aa0d5b26dc427ccbb2ad0bb4f738d17d60fd91 Mon Sep 17 00:00:00 2001
+From: mediumraredev <167935824+mediumraredev@users.noreply.github.com>
+Date: Sun, 26 Apr 2026 16:11:48 +1000
+Subject: [PATCH 11/13] Added load stream module to nginx.conf
+
+---
+ overlay/etc/nginx/nginx.conf | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/overlay/etc/nginx/nginx.conf b/overlay/etc/nginx/nginx.conf
+index 1e7242a..a1f0501 100644
+--- a/overlay/etc/nginx/nginx.conf
++++ b/overlay/etc/nginx/nginx.conf
+@@ -1,3 +1,4 @@
++load_module /usr/local/libexec/nginx/ngx_stream_module.so;
+ user www;
+ include /usr/local/etc/nginx/workers.conf;
+ pid /var/run/nginx.pid;
+-- 
+2.54.0 (Apple Git-157)
+
+
+From 4ea7279b95fef1b135bfebd4fe5715d71e6d11c2 Mon Sep 17 00:00:00 2001
+From: mediumraredev <167935824+mediumraredev@users.noreply.github.com>
+Date: Sun, 26 Apr 2026 16:12:53 +1000
+Subject: [PATCH 12/13] Disabled ipv6 in 10_cache.conf
+
+---
+ overlay/etc/nginx/sites-available/10_cache.conf | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/overlay/etc/nginx/sites-available/10_cache.conf b/overlay/etc/nginx/sites-available/10_cache.conf
+index ea956b4..502a611 100644
+--- a/overlay/etc/nginx/sites-available/10_cache.conf
++++ b/overlay/etc/nginx/sites-available/10_cache.conf
+@@ -2,7 +2,7 @@
+ 
+ server {
+   listen 80 reuseport;
+-  listen [::]:80 reuseport;
++  # listen [::]:80 reuseport;
+ 
+   access_log /data/logs/access.log LOG_FORMAT;
+   error_log /data/logs/error.log;
+-- 
+2.54.0 (Apple Git-157)
+
+
+From 52b812de4a2918ebef16644b681b1951930b2aeb Mon Sep 17 00:00:00 2001
+From: mediumraredev <167935824+mediumraredev@users.noreply.github.com>
+Date: Fri, 20 Nov 2026 11:07:50 +1100
+Subject: [PATCH 13/13] Substituted /data for CACHE_ROOT
+
+---
+ overlay/etc/nginx/conf.d/20_proxy_cache_path.conf  | 2 +-
+ overlay/etc/nginx/sites-available/10_cache.conf    | 4 ++--
+ overlay/etc/nginx/sites-available/20_upstream.conf | 2 +-
+ overlay/etc/nginx/stream-available/10_sni.conf     | 4 ++--
+ 4 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/overlay/etc/nginx/conf.d/20_proxy_cache_path.conf b/overlay/etc/nginx/conf.d/20_proxy_cache_path.conf
+index 75f4f02..00e0226 100644
+--- a/overlay/etc/nginx/conf.d/20_proxy_cache_path.conf
++++ b/overlay/etc/nginx/conf.d/20_proxy_cache_path.conf
+@@ -1 +1 @@
+-proxy_cache_path /data/cache/cache levels=2:2 keys_zone=generic:CACHE_INDEX_SIZE inactive=CACHE_MAX_AGE max_size=CACHE_DISK_SIZE min_free=MIN_FREE_DISK loader_files=1000 loader_sleep=50ms loader_threshold=300ms use_temp_path=off;
++proxy_cache_path CACHE_ROOT/cache/cache levels=2:2 keys_zone=generic:CACHE_INDEX_SIZE inactive=CACHE_MAX_AGE max_size=CACHE_DISK_SIZE min_free=MIN_FREE_DISK loader_files=1000 loader_sleep=50ms loader_threshold=300ms use_temp_path=off;
+diff --git a/overlay/etc/nginx/sites-available/10_cache.conf b/overlay/etc/nginx/sites-available/10_cache.conf
+index 502a611..74512de 100644
+--- a/overlay/etc/nginx/sites-available/10_cache.conf
++++ b/overlay/etc/nginx/sites-available/10_cache.conf
+@@ -4,8 +4,8 @@ server {
+   listen 80 reuseport;
+   # listen [::]:80 reuseport;
+ 
+-  access_log /data/logs/access.log LOG_FORMAT;
+-  error_log /data/logs/error.log;
++  access_log CACHE_ROOT/logs/access.log LOG_FORMAT;
++  error_log CACHE_ROOT/logs/error.log;
+ 
+   include /usr/local/etc/nginx/sites-available/cache.conf.d/*.conf;
+ }
+diff --git a/overlay/etc/nginx/sites-available/20_upstream.conf b/overlay/etc/nginx/sites-available/20_upstream.conf
+index 501cf7d..acf9d8b 100644
+--- a/overlay/etc/nginx/sites-available/20_upstream.conf
++++ b/overlay/etc/nginx/sites-available/20_upstream.conf
+@@ -11,7 +11,7 @@ server {
+   # No access_log tracking as all requests to this instance are already logged through monolithic
+ 
+   # access_log /data/logs/upstream-access.log LOG_FORMAT;
+-  error_log /data/logs/upstream-error.log;
++  error_log CACHE_ROOT/logs/upstream-error.log;
+ 
+   include /usr/local/etc/nginx/sites-available/upstream.conf.d/*.conf;
+ }
+diff --git a/overlay/etc/nginx/stream-available/10_sni.conf b/overlay/etc/nginx/stream-available/10_sni.conf
+index 87b0cea..b917c3b 100644
+--- a/overlay/etc/nginx/stream-available/10_sni.conf
++++ b/overlay/etc/nginx/stream-available/10_sni.conf
+@@ -6,6 +6,6 @@ server {
+   proxy_pass  $ssl_preread_server_name:443;
+   ssl_preread on;
+ 
+-  access_log /data/logs/stream-access.log stream_basic;
+-  error_log /data/logs/stream-error.log;
++  access_log CACHE_ROOT/logs/stream-access.log stream_basic;
++  error_log CACHE_ROOT/logs/stream-error.log;
+ }
+-- 
+2.54.0 (Apple Git-157)
+
