@@ -1,3 +1,12 @@
+From b9efe3a7ac74fa53d0de9857dd04ea95fd9bb4e4 Mon Sep 17 00:00:00 2001
+From: mediumraredev <167935824+mediumraredev@users.noreply.github.com>
+Date: Tue, 14 Apr 2026 13:26:56 +1000
+Subject: [PATCH] Modified paths in /cmd/const.go from /etc to /usr/local/etc
+
+---
+ cmd/const.go | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
 diff --git a/cmd/const.go b/cmd/const.go
 index fe303ba..a5f0267 100644
 --- a/cmd/const.go
@@ -29,3 +38,8 @@ index fe303ba..a5f0267 100644
  		allow-query { none; };
  	};`
  
+
+base-commit: 525ff662628c5bbf801f18c1572a1419ad8ca8c2
+-- 
+2.54.0 (Apple Git-157)
+
