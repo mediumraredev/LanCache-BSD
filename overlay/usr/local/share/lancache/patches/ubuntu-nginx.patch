@@ -1,7 +1,7 @@
 From b9b5c60fdbb98bf57079fdd9ce9d17331a20c5c7 Mon Sep 17 00:00:00 2001
 From: mediumraredev <167935824+mediumraredev@users.noreply.github.com>
 Date: Tue, 14 Apr 2026 13:40:43 +1000
-Subject: [PATCH 1/5] Removed files not needed
+Subject: [PATCH 1/6] Removed files not needed
 
 ---
  Dockerfile     | 29 -----------------------------
@@ -138,7 +138,7 @@ base-commit: 750377d5aaecf39d6f69618baa0926f5bc7f86a4
 From a36b56780db384b18285af2cf10b7d591e9a5a1d Mon Sep 17 00:00:00 2001
 From: mediumraredev <167935824+mediumraredev@users.noreply.github.com>
 Date: Tue, 14 Apr 2026 13:45:59 +1000
-Subject: [PATCH 2/5] Adjusted the index.html
+Subject: [PATCH 2/6] Adjusted the index.html
 
 ---
  overlay/var/www/html/index.html | 2 +-
@@ -158,7 +158,7 @@ index c6cf2b5..846d889 100644
 From 75997f3e847440ba3585c0ed8bf695c0d6ffa47d Mon Sep 17 00:00:00 2001
 From: mediumraredev <167935824+mediumraredev@users.noreply.github.com>
 Date: Tue, 14 Apr 2026 13:48:11 +1000
-Subject: [PATCH 3/5] Removed nginx start script because it will be handled by
+Subject: [PATCH 3/6] Removed nginx start script because it will be handled by
  RC
 
 ---
@@ -182,7 +182,7 @@ index e6bbbce..0000000
 From 61bb4e8ac3e578e200a7e897d39b854bdb7f8282 Mon Sep 17 00:00:00 2001
 From: mediumraredev <167935824+mediumraredev@users.noreply.github.com>
 Date: Tue, 14 Apr 2026 13:55:36 +1000
-Subject: [PATCH 4/5] Removed supervisor files
+Subject: [PATCH 4/6] Removed supervisor files
 
 ---
  overlay/etc/supervisor/conf.d/nginx.conf | 4 ----
@@ -206,7 +206,7 @@ index 91b4ac0..0000000
 From f777bac48063f594a2e66396ebc899b46a3dccfe Mon Sep 17 00:00:00 2001
 From: mediumraredev <167935824+mediumraredev@users.noreply.github.com>
 Date: Tue, 14 Apr 2026 14:12:34 +1000
-Subject: [PATCH 5/5] Adjustments to nginx.conf to suit FreeBSD
+Subject: [PATCH 5/6] Adjustments to nginx.conf to suit FreeBSD
 
 ---
  overlay/etc/nginx/nginx.conf | 35 ++++++++++++++++++++++++++---------
@@ -277,6 +277,98 @@ index 4579c16..bd35292 100644
 +  include /usr/local/etc/nginx/stream.d/*.conf;
 +  include /usr/local/etc/nginx/stream-enabled/*;
  }
+-- 
+2.54.0 (Apple Git-157)
+
+
+From 19f3ef74c40931a5a77d95b34c9d5c9cc542798c Mon Sep 17 00:00:00 2001
+From: mediumraredev <167935824+mediumraredev@users.noreply.github.com>
+Date: Fri, 20 Nov 2026 13:41:34 +1100
+Subject: [PATCH 6/6] Removed files not required
+
+---
+ overlay/etc/nginx/conf.d/gzip.conf              |  8 --------
+ .../supervisord-pre.d/20_test_files_setup.sh    | 17 -----------------
+ .../supervisord-pre.d/21_cleanup_log_files.sh   | 11 -----------
+ overlay/var/www/html/index.html                 |  1 -
+ overlay/var/www/html/phpinfo.php                |  3 ---
+ 5 files changed, 40 deletions(-)
+ delete mode 100644 overlay/etc/nginx/conf.d/gzip.conf
+ delete mode 100755 overlay/hooks/supervisord-pre.d/20_test_files_setup.sh
+ delete mode 100755 overlay/hooks/supervisord-pre.d/21_cleanup_log_files.sh
+ delete mode 100644 overlay/var/www/html/index.html
+ delete mode 100644 overlay/var/www/html/phpinfo.php
+
+diff --git a/overlay/etc/nginx/conf.d/gzip.conf b/overlay/etc/nginx/conf.d/gzip.conf
+deleted file mode 100644
+index c213c7f..0000000
+--- a/overlay/etc/nginx/conf.d/gzip.conf
++++ /dev/null
+@@ -1,8 +0,0 @@
+-gzip on;
+-gzip_disable "msie6";
+-gzip_vary on;
+-gzip_proxied any;
+-gzip_comp_level 6;
+-gzip_buffers 16 8k;
+-gzip_http_version 1.1;
+-gzip_types text/plain text/css application/json application/javascript application/x-javascript text/xml application/xml application/xml+rss text/javascript application/vnd.ms-fontobject application/x-font-ttf font/opentype image/svg+xml image/x-icon;
+diff --git a/overlay/hooks/supervisord-pre.d/20_test_files_setup.sh b/overlay/hooks/supervisord-pre.d/20_test_files_setup.sh
+deleted file mode 100755
+index 45e6c52..0000000
+--- a/overlay/hooks/supervisord-pre.d/20_test_files_setup.sh
++++ /dev/null
+@@ -1,17 +0,0 @@
+-#!/usr/bin/env bash
+-
+-if [ -s /etc/DOCUMENT_ROOT ]; then
+-	DOCUMENT_ROOT=$(cat /etc/DOCUMENT_ROOT)
+-fi
+-
+-# If our document root is empty - then copy over a suite of test files
+-echo -n "Checking if /var/www/${DOCUMENT_ROOT} is empty - "
+-DOC_CHECK=$(find "/var/www/${DOCUMENT_ROOT}" -maxdepth 0 -empty -exec echo EMPTY \;)
+-if [ "${DOC_CHECK}" == "EMPTY" ]; then
+-	echo "Yes - copying content"
+-	cp -Rvp /usr/src/test_scripts/* "/var/www/${DOCUMENT_ROOT}/"
+-	exit 0
+-else
+-	echo "Directory not empty.. don't touch content"
+-	exit 0
+-fi
+diff --git a/overlay/hooks/supervisord-pre.d/21_cleanup_log_files.sh b/overlay/hooks/supervisord-pre.d/21_cleanup_log_files.sh
+deleted file mode 100755
+index b9c3c39..0000000
+--- a/overlay/hooks/supervisord-pre.d/21_cleanup_log_files.sh
++++ /dev/null
+@@ -1,11 +0,0 @@
+-#!/usr/bin/env bash
+-
+-# Check to see if user has set number of logfiles to keep:
+-
+-if [ -z "${LOGFILE_RETENTION}" ]; then
+-	LOGFILE_RETENTION=7
+-fi
+-
+-# Clean up logfiles older than $LOGFILE_RETNENTION date
+-echo "Cleaning up log files older than ${LOGFILE_RETENTION} days"
+-find /var/log/nginx/ -type f -mtime +"${LOGFILE_RETENTION}" -exec rm {} \;
+diff --git a/overlay/var/www/html/index.html b/overlay/var/www/html/index.html
+deleted file mode 100644
+index 846d889..0000000
+--- a/overlay/var/www/html/index.html
++++ /dev/null
+@@ -1 +0,0 @@
+-Welcome, maybe FreeBSD is better.
+diff --git a/overlay/var/www/html/phpinfo.php b/overlay/var/www/html/phpinfo.php
+deleted file mode 100644
+index cf60860..0000000
+--- a/overlay/var/www/html/phpinfo.php
++++ /dev/null
+@@ -1,3 +0,0 @@
+-<?php
+-phpinfo();
+-?>
 -- 
 2.54.0 (Apple Git-157)
 
